@@ -31,7 +31,7 @@ const FILTERS: { value: FilterType; label: string }[] = [
 const VIEW_MODES: { value: ViewMode; icon: keyof typeof Feather.glyphMap; label: string }[] = [
   { value: "list", icon: "list", label: "List" },
   { value: "calendar", icon: "calendar", label: "Calendar" },
-  { value: "chart", icon: "bar-chart-2", label: "Compare" },
+  { value: "chart", icon: "bar-chart-2", label: "Charts" },
 ];
 
 export default function HistoryScreen() {
@@ -69,98 +69,125 @@ export default function HistoryScreen() {
     setSelectedDayReadings(dayReadings);
   };
 
+  const clearSelectedDay = () => {
+    setSelectedDayReadings(null);
+  };
+
   const renderItem = ({ item }: { item: Reading }) => (
-    <ReadingListItem
-      reading={item}
-      onDelete={() => handleDelete(item)}
-    />
+    <ReadingListItem reading={item} onDelete={() => handleDelete(item)} />
   );
 
-  const renderViewModeSelector = () => (
-    <View style={[styles.viewModeContainer, { backgroundColor: theme.backgroundDefault }]}>
-      {VIEW_MODES.map((mode) => (
-        <Pressable
-          key={mode.value}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setViewMode(mode.value);
-            setSelectedDayReadings(null);
-          }}
-          style={[
-            styles.viewModeBtn,
-            {
-              backgroundColor: viewMode === mode.value ? colors.primary : "transparent",
-            },
-          ]}
-        >
-          <Feather
-            name={mode.icon}
-            size={16}
-            color={viewMode === mode.value ? "#FFFFFF" : theme.textSecondary}
-          />
-        </Pressable>
-      ))}
+  const ViewModeSelector = () => (
+    <View style={[styles.viewModeWrapper, { backgroundColor: theme.backgroundDefault }]}>
+      {VIEW_MODES.map((mode) => {
+        const isActive = viewMode === mode.value;
+        return (
+          <Pressable
+            key={mode.value}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setViewMode(mode.value);
+              setSelectedDayReadings(null);
+            }}
+            style={[
+              styles.viewModeBtn,
+              { backgroundColor: isActive ? colors.primary : "transparent" },
+            ]}
+          >
+            <Feather
+              name={mode.icon}
+              size={14}
+              color={isActive ? "#FFFFFF" : theme.textSecondary}
+            />
+            <ThemedText
+              style={[
+                styles.viewModeLabel,
+                { color: isActive ? "#FFFFFF" : theme.textSecondary },
+              ]}
+            >
+              {mode.label}
+            </ThemedText>
+          </Pressable>
+        );
+      })}
     </View>
   );
 
-  const renderCalendarView = () => (
+  const FilterChips = () => (
     <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.filterScrollContainer}
+      contentContainerStyle={styles.filterScrollContent}
     >
-      {renderViewModeSelector()}
-      <CalendarHeatmap
-        readings={readings}
-        onDayPress={handleDayPress}
-      />
-      {selectedDayReadings ? (
-        <View style={styles.dayReadingsContainer}>
-          <View style={styles.dayReadingsHeader}>
-            <ThemedText style={styles.dayReadingsTitle}>
-              {selectedDayReadings.length} reading{selectedDayReadings.length !== 1 ? "s" : ""} on this day
-            </ThemedText>
-            <Pressable onPress={() => setSelectedDayReadings(null)}>
-              <Feather name="x" size={20} color={theme.textSecondary} />
-            </Pressable>
-          </View>
-          {selectedDayReadings.map((reading) => (
-            <ReadingListItem
-              key={reading.id}
-              reading={reading}
-              onDelete={() => handleDelete(reading)}
-            />
-          ))}
-        </View>
-      ) : null}
+      {FILTERS.map((item) => (
+        <Pressable
+          key={item.value}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setSelectedFilter(item.value);
+          }}
+          style={[
+            styles.filterChip,
+            {
+              backgroundColor:
+                selectedFilter === item.value ? colors.primary : theme.backgroundDefault,
+            },
+          ]}
+        >
+          <ThemedText
+            style={[
+              styles.filterText,
+              { color: selectedFilter === item.value ? "#FFFFFF" : theme.text },
+            ]}
+          >
+            {item.label}
+          </ThemedText>
+        </Pressable>
+      ))}
     </ScrollView>
   );
 
-  const renderChartView = () => (
-    <ScrollView
-      style={styles.scrollView}
-      contentContainerStyle={{
-        paddingTop: headerHeight + Spacing.xl,
-        paddingBottom: tabBarHeight + Spacing.xl,
-        paddingHorizontal: Spacing.lg,
-      }}
-      scrollIndicatorInsets={{ bottom: insets.bottom }}
-    >
-      {renderViewModeSelector()}
-      <ComparisonChart readings={readings} />
-      <View style={{ height: Spacing.lg }} />
-      <CalendarHeatmap readings={readings} onDayPress={handleDayPress} />
-    </ScrollView>
-  );
+  const SelectedDayPanel = () => {
+    if (!selectedDayReadings) return null;
+    return (
+      <View style={[styles.selectedDayPanel, { backgroundColor: theme.backgroundDefault }]}>
+        <View style={styles.selectedDayHeader}>
+          <ThemedText style={styles.selectedDayTitle}>
+            {selectedDayReadings.length} reading{selectedDayReadings.length !== 1 ? "s" : ""}
+          </ThemedText>
+          <Pressable onPress={clearSelectedDay} hitSlop={12}>
+            <Feather name="x" size={20} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+        {selectedDayReadings.map((reading) => (
+          <ReadingListItem
+            key={reading.id}
+            reading={reading}
+            onDelete={() => handleDelete(reading)}
+          />
+        ))}
+      </View>
+    );
+  };
 
   if (viewMode === "calendar") {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        {renderCalendarView()}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{
+            paddingTop: headerHeight + Spacing.lg,
+            paddingBottom: tabBarHeight + Spacing.xl,
+            paddingHorizontal: Spacing.lg,
+          }}
+          scrollIndicatorInsets={{ bottom: insets.bottom }}
+        >
+          <ViewModeSelector />
+          <View style={styles.sectionGap} />
+          <CalendarHeatmap readings={readings} onDayPress={handleDayPress} />
+          <SelectedDayPanel />
+        </ScrollView>
       </View>
     );
   }
@@ -168,7 +195,22 @@ export default function HistoryScreen() {
   if (viewMode === "chart") {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
-        {renderChartView()}
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{
+            paddingTop: headerHeight + Spacing.lg,
+            paddingBottom: tabBarHeight + Spacing.xl,
+            paddingHorizontal: Spacing.lg,
+          }}
+          scrollIndicatorInsets={{ bottom: insets.bottom }}
+        >
+          <ViewModeSelector />
+          <View style={styles.sectionGap} />
+          <ComparisonChart readings={readings} />
+          <View style={styles.sectionGap} />
+          <CalendarHeatmap readings={readings} onDayPress={handleDayPress} />
+          <SelectedDayPanel />
+        </ScrollView>
       </View>
     );
   }
@@ -178,7 +220,7 @@ export default function HistoryScreen() {
       <FlatList
         style={styles.list}
         contentContainerStyle={{
-          paddingTop: headerHeight + Spacing.xl,
+          paddingTop: headerHeight + Spacing.lg,
           paddingBottom: tabBarHeight + Spacing.xl,
           paddingHorizontal: Spacing.lg,
           flexGrow: 1,
@@ -187,50 +229,13 @@ export default function HistoryScreen() {
         data={filteredReadings}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
         ListHeaderComponent={
-          <View>
-            {renderViewModeSelector()}
-            <View style={styles.filterContainer}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterScroll}
-              >
-                {FILTERS.map((item) => (
-                  <Pressable
-                    key={item.value}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setSelectedFilter(item.value);
-                    }}
-                    style={({ pressed }) => [
-                      styles.filterChip,
-                      {
-                        backgroundColor:
-                          selectedFilter === item.value
-                            ? colors.primary
-                            : theme.backgroundDefault,
-                        opacity: pressed ? 0.7 : 1,
-                      },
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.filterText,
-                        {
-                          color:
-                            selectedFilter === item.value
-                              ? "#FFFFFF"
-                              : theme.text,
-                        },
-                      ]}
-                    >
-                      {item.label}
-                    </ThemedText>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
+          <View style={styles.listHeader}>
+            <ViewModeSelector />
+            <View style={styles.sectionGap} />
+            <FilterChips />
+            <View style={styles.sectionGap} />
           </View>
         }
         ListEmptyComponent={
@@ -255,47 +260,62 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  viewModeContainer: {
+  listHeader: {
+    marginBottom: Spacing.sm,
+  },
+  listSeparator: {
+    height: Spacing.sm,
+  },
+  sectionGap: {
+    height: Spacing.md,
+  },
+  viewModeWrapper: {
     flexDirection: "row",
     alignSelf: "center",
     borderRadius: BorderRadius.lg,
     padding: 4,
-    marginBottom: Spacing.lg,
-    gap: 4,
   },
   viewModeBtn: {
-    paddingHorizontal: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
-  filterContainer: {
-    marginBottom: Spacing.lg,
+  viewModeLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  filterScrollContainer: {
     marginHorizontal: -Spacing.lg,
   },
-  filterScroll: {
+  filterScrollContent: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
+    flexDirection: "row",
   },
   filterChip: {
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    marginRight: Spacing.sm,
   },
   filterText: {
     fontSize: 14,
     fontWeight: "500",
   },
-  dayReadingsContainer: {
+  selectedDayPanel: {
     marginTop: Spacing.lg,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
   },
-  dayReadingsHeader: {
+  selectedDayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.md,
   },
-  dayReadingsTitle: {
+  selectedDayTitle: {
     fontSize: 16,
     fontWeight: "600",
   },
