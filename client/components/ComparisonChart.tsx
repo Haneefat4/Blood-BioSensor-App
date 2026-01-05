@@ -172,6 +172,7 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
       <View style={styles.typeSelector}>
         {READING_TYPES.map((type) => {
           const isSelected = selectedTypes.includes(type);
+          const shortLabel = READING_CONFIG[type].label.slice(0, 3);
           return (
             <Pressable
               key={type}
@@ -179,19 +180,18 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
               style={[
                 styles.typeChip,
                 {
-                  backgroundColor: isSelected ? TYPE_COLORS[type] + "20" : "transparent",
-                  borderColor: TYPE_COLORS[type],
+                  backgroundColor: isSelected ? TYPE_COLORS[type] : theme.backgroundDefault,
+                  borderColor: isSelected ? TYPE_COLORS[type] : theme.textSecondary + "40",
                 },
               ]}
             >
-              <View style={[styles.typeDot, { backgroundColor: TYPE_COLORS[type] }]} />
               <ThemedText
                 style={[
                   styles.typeLabel,
-                  { color: isSelected ? TYPE_COLORS[type] : theme.textSecondary },
+                  { color: isSelected ? "#FFFFFF" : theme.textSecondary },
                 ]}
               >
-                {READING_CONFIG[type].label}
+                {shortLabel}
               </ThemedText>
             </Pressable>
           );
@@ -212,7 +212,7 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
       </View>
 
       {readings.filter((r) => selectedTypes.includes(r.type)).length === 0 ? (
-        <View style={styles.noDataOverlay}>
+        <View style={styles.noDataContainer}>
           <ThemedText style={[styles.noDataText, { color: theme.textSecondary }]}>
             No data for selected biomarkers in the last 7 days
           </ThemedText>
@@ -239,27 +239,22 @@ const styles = StyleSheet.create({
   },
   typeSelector: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    justifyContent: "space-between",
     gap: Spacing.xs,
     marginBottom: Spacing.lg,
   },
   typeChip: {
-    flexDirection: "row",
+    flex: 1,
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
+    justifyContent: "center",
+    paddingHorizontal: Spacing.xs,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
-  typeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
   typeLabel: {
-    fontSize: 12,
-    fontWeight: "500",
+    fontSize: 11,
+    fontWeight: "600",
   },
   chartContainer: {
     height: CHART_HEIGHT + 24,
@@ -289,12 +284,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     flex: 1,
   },
-  noDataOverlay: {
-    position: "absolute",
-    top: 80,
-    left: 0,
-    right: 0,
+  noDataContainer: {
     alignItems: "center",
+    paddingVertical: Spacing.md,
   },
   noDataText: {
     fontSize: 12,
