@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, TextInput, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -12,6 +12,7 @@ import { AvatarSelector } from "@/components/AvatarSelector";
 import { SettingsRow } from "@/components/SettingsRow";
 import { Button } from "@/components/Button";
 import { usePreferencesContext } from "@/context/PreferencesContext";
+import { useReadingsContext } from "@/context/ReadingsContext";
 import { clearAllData } from "@/lib/storage";
 
 export default function ProfileScreen() {
@@ -20,9 +21,14 @@ export default function ProfileScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { preferences, updatePreferences, refresh } = usePreferencesContext();
+  const { preferences, updatePreferences, refresh: refreshPreferences } = usePreferencesContext();
+  const { refresh: refreshReadings } = useReadingsContext();
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(preferences.displayName);
+
+  useEffect(() => {
+    setTempName(preferences.displayName);
+  }, [preferences.displayName]);
 
   const handleNameSave = () => {
     if (tempName.trim()) {
@@ -43,9 +49,13 @@ export default function ProfileScreen() {
           text: "Clear Data",
           style: "destructive",
           onPress: async () => {
-            await clearAllData();
-            await refresh();
-            Alert.alert("Success", "All data has been cleared.");
+            try {
+              await clearAllData();
+              await Promise.all([refreshPreferences(), refreshReadings()]);
+              Alert.alert("Success", "All data has been cleared.");
+            } catch (error) {
+              Alert.alert("Error", "Failed to clear data. Please try again.");
+            }
           },
         },
       ]

@@ -58,6 +58,10 @@ export function useReadings() {
     return readings[0];
   }, [readings]);
 
+  const refresh = useCallback(async () => {
+    return loadReadings();
+  }, [loadReadings]);
+
   return {
     readings,
     isLoading,
@@ -65,6 +69,6 @@ export function useReadings() {
     removeReading,
     getLatestByType,
     getLatestReading,
-    refresh: loadReadings,
+    refresh,
   };
 }

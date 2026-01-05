@@ -32,10 +32,14 @@ export function usePreferences() {
     [preferences]
   );
 
+  const refresh = useCallback(async () => {
+    return loadPreferences();
+  }, [loadPreferences]);
+
   return {
     preferences,
     isLoading,
     updatePreferences,
-    refresh: loadPreferences,
+    refresh,
   };
 }
