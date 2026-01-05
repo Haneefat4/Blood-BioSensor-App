@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Alert } from "react-native";
+import { View, StyleSheet, TextInput, Alert, Share, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
@@ -13,18 +17,26 @@ import { SettingsRow } from "@/components/SettingsRow";
 import { Button } from "@/components/Button";
 import { usePreferencesContext } from "@/context/PreferencesContext";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
+import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
+import { READING_CONFIG, READING_TAGS } from "@/types";
+
+type ProfileNav = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
+  const navigation = useNavigation<ProfileNav>();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const { preferences, updatePreferences, refresh: refreshPreferences } = usePreferencesContext();
-  const { refresh: refreshReadings } = useReadingsContext();
+  const { readings, refresh: refreshReadings } = useReadingsContext();
+  const { refresh: refreshMedications } = useMedicationsContext();
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(preferences.displayName);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     setTempName(preferences.displayName);
@@ -39,10 +51,133 @@ export default function ProfileScreen() {
     setEditingName(false);
   };
 
+  const handleExportCSV = async () => {
+    if (readings.length === 0) {
+      Alert.alert("No Data", "There are no readings to export.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const headers = ["Date", "Time", "Type", "Value", "Unit", "Status", "Fasting", "Tags", "Notes"];
+      const rows = readings.map((r) => {
+        const date = new Date(r.timestamp);
+        const tags = r.tags?.map((t) => READING_TAGS.find((tag) => tag.id === t)?.label || t).join("; ") || "";
+        return [
+          date.toLocaleDateString(),
+          date.toLocaleTimeString(),
+          READING_CONFIG[r.type].label,
+          r.value.toString(),
+          r.unit,
+          r.status,
+          r.isFasting ? "Yes" : "No",
+          tags,
+          r.notes || "",
+        ].map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",");
+      });
+      const csv = [headers.join(","), ...rows].join("\n");
+
+      if (Platform.OS === "web") {
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `blood-biosensor-export-${new Date().toISOString().split("T")[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        await Share.share({
+          message: csv,
+          title: "Blood Biosensor Export",
+        });
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to export data.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (readings.length === 0) {
+      Alert.alert("No Data", "There are no readings to export.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Blood Biosensor Report</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
+            h1 { color: #2563EB; margin-bottom: 20px; }
+            .summary { margin-bottom: 30px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+            th { background-color: #2563EB; color: white; }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .normal { color: #22C55E; }
+            .warning { color: #F59E0B; }
+            .critical { color: #EF4444; }
+            .fasting { background-color: #FEF3C7; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>Blood Biosensor Health Report</h1>
+          <div class="summary">
+            <p><strong>User:</strong> ${preferences.displayName}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+            <p><strong>Total Readings:</strong> ${readings.length}</p>
+          </div>
+          <table>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Value</th>
+              <th>Status</th>
+              <th>Fasting</th>
+              <th>Notes</th>
+            </tr>
+            ${readings.map((r) => `
+              <tr>
+                <td>${new Date(r.timestamp).toLocaleDateString()} ${new Date(r.timestamp).toLocaleTimeString()}</td>
+                <td>${READING_CONFIG[r.type].label}</td>
+                <td>${r.value} ${r.unit}</td>
+                <td class="${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</td>
+                <td>${r.isFasting ? '<span class="fasting">Fasting</span>' : "-"}</td>
+                <td>${r.notes || "-"}</td>
+              </tr>
+            `).join("")}
+          </table>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Share Health Report",
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        Alert.alert("Success", "PDF saved to: " + uri);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to generate PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleClearData = () => {
     Alert.alert(
       "Clear All Data",
-      "This will permanently delete all your readings and preferences. This action cannot be undone.",
+      "This will permanently delete all your readings, medications, and preferences. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -51,7 +186,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await clearAllData();
-              await Promise.all([refreshPreferences(), refreshReadings()]);
+              await Promise.all([refreshPreferences(), refreshReadings(), refreshMedications()]);
               Alert.alert("Success", "All data has been cleared.");
             } catch (error) {
               Alert.alert("Error", "Failed to clear data. Please try again.");
@@ -110,6 +245,38 @@ export default function ProfileScreen() {
             }}
           />
         )}
+      </View>
+
+      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText style={styles.sectionTitle}>Health Tracking</ThemedText>
+        <SettingsRow
+          icon="plus-circle"
+          label="My Medications"
+          onPress={() => navigation.navigate("Medications")}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="bell"
+          label="Measurement Reminders"
+          onPress={() => navigation.navigate("Reminders")}
+        />
+      </View>
+
+      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+        <ThemedText style={styles.sectionTitle}>Export Data</ThemedText>
+        <SettingsRow
+          icon="file-text"
+          label="Export as PDF"
+          onPress={handleExportPDF}
+          value={isExporting ? "Exporting..." : undefined}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <SettingsRow
+          icon="download"
+          label="Export as CSV"
+          onPress={handleExportCSV}
+          value={isExporting ? "Exporting..." : undefined}
+        />
       </View>
 
       <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>

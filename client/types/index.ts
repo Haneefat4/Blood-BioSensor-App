@@ -2,6 +2,18 @@ export type ReadingType = "glucose" | "hemoglobin" | "cholesterol" | "platelets"
 
 export type ReadingStatus = "normal" | "warning" | "critical";
 
+export type ReadingTag = "fasting" | "after_meal" | "before_meal" | "exercise" | "medication" | "morning" | "evening";
+
+export const READING_TAGS: { id: ReadingTag; label: string; icon: string }[] = [
+  { id: "fasting", label: "Fasting", icon: "clock" },
+  { id: "after_meal", label: "After Meal", icon: "coffee" },
+  { id: "before_meal", label: "Before Meal", icon: "sunrise" },
+  { id: "exercise", label: "After Exercise", icon: "activity" },
+  { id: "medication", label: "With Medication", icon: "plus-circle" },
+  { id: "morning", label: "Morning", icon: "sun" },
+  { id: "evening", label: "Evening", icon: "moon" },
+];
+
 export interface Reading {
   id: string;
   type: ReadingType;
@@ -10,6 +22,25 @@ export interface Reading {
   timestamp: number;
   notes?: string;
   status: ReadingStatus;
+  isFasting?: boolean;
+  tags?: ReadingTag[];
+  photoUri?: string;
+}
+
+export interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: string;
+  time?: string;
+  notes?: string;
+  createdAt: number;
+}
+
+export interface ReminderSettings {
+  enabled: boolean;
+  times: string[];
+  types: ReadingType[];
 }
 
 export interface UserPreferences {
@@ -18,6 +49,7 @@ export interface UserPreferences {
   units: "mg/dL" | "mmol/L";
   darkMode: "system" | "light" | "dark";
   notificationsEnabled: boolean;
+  reminderSettings?: ReminderSettings;
 }
 
 export const READING_CONFIG: Record<
@@ -77,4 +109,9 @@ export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   units: "mg/dL",
   darkMode: "system",
   notificationsEnabled: false,
+  reminderSettings: {
+    enabled: false,
+    times: ["09:00", "21:00"],
+    types: ["glucose"],
+  },
 };

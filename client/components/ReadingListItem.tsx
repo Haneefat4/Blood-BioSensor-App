@@ -12,7 +12,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading } from "@/types";
-import { READING_CONFIG } from "@/types";
+import { READING_CONFIG, READING_TAGS } from "@/types";
 
 interface ReadingListItemProps {
   reading: Reading;
@@ -47,6 +47,11 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
     minute: "2-digit",
   });
 
+  const tagLabels = reading.tags?.map((tagId) => {
+    const tag = READING_TAGS.find((t) => t.id === tagId);
+    return tag?.label || tagId;
+  });
+
   return (
     <AnimatedPressable
       onPress={onPress}
@@ -63,7 +68,17 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <ThemedText style={styles.type}>{config.label}</ThemedText>
+          <View style={styles.titleRow}>
+            <ThemedText style={styles.type}>{config.label}</ThemedText>
+            {reading.isFasting ? (
+              <View style={[styles.fastingBadge, { backgroundColor: colors.warning + "20" }]}>
+                <Feather name="clock" size={10} color={colors.warning} />
+                <ThemedText style={[styles.fastingText, { color: colors.warning }]}>
+                  Fasting
+                </ThemedText>
+              </View>
+            ) : null}
+          </View>
           <StatusBadge status={reading.status} />
         </View>
         <View style={styles.bottomRow}>
@@ -77,6 +92,20 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
             {formattedDate}
           </ThemedText>
         </View>
+        {tagLabels && tagLabels.length > 0 ? (
+          <View style={styles.tagsRow}>
+            {tagLabels.map((label, index) => (
+              <View
+                key={index}
+                style={[styles.tagChip, { backgroundColor: colors.primary + "15" }]}
+              >
+                <ThemedText style={[styles.tagText, { color: colors.primary }]}>
+                  {label}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        ) : null}
         {reading.notes ? (
           <ThemedText
             style={[styles.notes, { color: theme.textSecondary }]}
@@ -105,7 +134,7 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.sm,
@@ -127,8 +156,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing.xs,
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
   type: {
     fontSize: 16,
+    fontWeight: "600",
+  },
+  fastingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  fastingText: {
+    fontSize: 10,
     fontWeight: "600",
   },
   bottomRow: {
@@ -150,6 +196,21 @@ const styles = StyleSheet.create({
   },
   date: {
     fontSize: 12,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  tagChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: "500",
   },
   notes: {
     fontSize: 12,

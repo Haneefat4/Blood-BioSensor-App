@@ -13,6 +13,7 @@ import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ReadingsProvider } from "@/context/ReadingsContext";
 import { PreferencesProvider } from "@/context/PreferencesContext";
+import { MedicationsProvider } from "@/context/MedicationsContext";
 
 export default function App() {
   return (
@@ -23,9 +24,11 @@ export default function App() {
             <KeyboardProvider>
               <ReadingsProvider>
                 <PreferencesProvider>
-                  <NavigationContainer>
-                    <RootStackNavigator />
-                  </NavigationContainer>
+                  <MedicationsProvider>
+                    <NavigationContainer>
+                      <RootStackNavigator />
+                    </NavigationContainer>
+                  </MedicationsProvider>
                 </PreferencesProvider>
               </ReadingsProvider>
               <StatusBar style="auto" />

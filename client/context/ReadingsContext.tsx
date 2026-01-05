@@ -1,11 +1,11 @@
 import React, { createContext, useContext, ReactNode } from "react";
-import { useReadings } from "@/hooks/useReadings";
+import { useReadings, AddReadingOptions } from "@/hooks/useReadings";
 import type { Reading, ReadingType } from "@/types";
 
 interface ReadingsContextType {
   readings: Reading[];
   isLoading: boolean;
-  addReading: (type: ReadingType, value: number, notes?: string) => Promise<Reading>;
+  addReading: (type: ReadingType, value: number, options?: AddReadingOptions) => Promise<Reading>;
   removeReading: (id: string) => Promise<void>;
   getLatestByType: (type: ReadingType) => Reading | undefined;
   getLatestReading: () => Reading | undefined;

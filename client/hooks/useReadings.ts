@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Reading, ReadingType } from "@/types";
+import type { Reading, ReadingType, ReadingTag } from "@/types";
 import { getReadings, saveReading, deleteReading } from "@/lib/storage";
 import { getReadingStatus, READING_CONFIG } from "@/types";
+
+export interface AddReadingOptions {
+  notes?: string;
+  isFasting?: boolean;
+  tags?: ReadingTag[];
+  photoUri?: string;
+}
 
 export function useReadings() {
   const [readings, setReadings] = useState<Reading[]>([]);
@@ -24,7 +31,7 @@ export function useReadings() {
   }, [loadReadings]);
 
   const addReading = useCallback(
-    async (type: ReadingType, value: number, notes?: string) => {
+    async (type: ReadingType, value: number, options?: AddReadingOptions) => {
       const config = READING_CONFIG[type];
       const newReading: Reading = {
         id: Date.now().toString(),
@@ -32,8 +39,11 @@ export function useReadings() {
         value,
         unit: config.defaultUnit,
         timestamp: Date.now(),
-        notes,
+        notes: options?.notes,
         status: getReadingStatus(type, value),
+        isFasting: options?.isFasting,
+        tags: options?.tags,
+        photoUri: options?.photoUri,
       };
       await saveReading(newReading);
       setReadings((prev) => [newReading, ...prev]);
