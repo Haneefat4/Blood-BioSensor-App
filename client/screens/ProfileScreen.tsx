@@ -5,6 +5,7 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
+import { ThemedText } from "@/components/ThemedText";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,8 @@ export default function ProfileScreen() {
         paddingHorizontal: Spacing.lg,
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
-    />
+    >
+      <ThemedText>Placeholder</ThemedText>
+    </KeyboardAwareScrollViewCompat>
   );
 }

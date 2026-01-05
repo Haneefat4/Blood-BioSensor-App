@@ -1,10 +1,11 @@
-import { FlatList } from "react-native";
+import { ScrollView } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 
 import { useTheme } from "@/hooks/useTheme";
 import { Spacing } from "@/constants/theme";
+import { ThemedText } from "@/components/ThemedText";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -13,7 +14,7 @@ export default function HomeScreen() {
   const { theme } = useTheme();
 
   return (
-    <FlatList
+    <ScrollView
       style={{ flex: 1, backgroundColor: theme.backgroundRoot }}
       contentContainerStyle={{
         paddingTop: headerHeight + Spacing.xl,
@@ -21,8 +22,8 @@ export default function HomeScreen() {
         paddingHorizontal: Spacing.lg,
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
-      data={[]}
-      renderItem={() => null}
-    />
+    >
+      <ThemedText>Placeholder</ThemedText>
+    </ScrollView>
   );
 }

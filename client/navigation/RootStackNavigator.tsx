@@ -1,18 +1,22 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
-import ModalScreen from "@/screens/ModalScreen";
+import AddReadingScreen from "@/screens/AddReadingScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
+import { useTheme } from "@/hooks/useTheme";
 
 export type RootStackParamList = {
   Main: undefined;
-  Modal: undefined;
+  AddReading: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootStackNavigator() {
-  const screenOptions = useScreenOptions();
+  const screenOptions = useScreenOptions({ transparent: false });
+  const { theme } = useTheme();
 
   return (
     <Stack.Navigator screenOptions={screenOptions}>
@@ -22,12 +26,21 @@ export default function RootStackNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="Modal"
-        component={ModalScreen}
-        options={{
+        name="AddReading"
+        component={AddReadingScreen}
+        options={({ navigation }) => ({
           presentation: "modal",
-          headerTitle: "Modal",
-        }}
+          headerTitle: "Add Reading",
+          headerLeft: () => (
+            <Pressable
+              onPress={() => navigation.goBack()}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          ),
+        })}
       />
     </Stack.Navigator>
   );

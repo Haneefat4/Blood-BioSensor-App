@@ -1,30 +1,43 @@
 import { Platform } from "react-native";
 
-const tintColorLight = "#007AFF";
-const tintColorDark = "#0A84FF";
-
 export const Colors = {
   light: {
-    text: "#11181C",
+    text: "#111827",
+    textSecondary: "#6B7280",
     buttonText: "#FFFFFF",
-    tabIconDefault: "#687076",
-    tabIconSelected: tintColorLight,
-    link: "#007AFF",
-    backgroundRoot: "#FFFFFF", // Elevation 0
-    backgroundDefault: "#F2F2F2", // Elevation 1
-    backgroundSecondary: "#E6E6E6", // Elevation 2
-    backgroundTertiary: "#D9D9D9", // Elevation 3
+    tabIconDefault: "#6B7280",
+    tabIconSelected: "#2563EB",
+    link: "#2563EB",
+    backgroundRoot: "#FFFFFF",
+    backgroundDefault: "#F3F4F6",
+    backgroundSecondary: "#E5E7EB",
+    backgroundTertiary: "#D1D5DB",
+    primary: "#2563EB",
+    secondary: "#14B8A6",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    border: "#E5E7EB",
+    cardBackground: "#FFFFFF",
   },
   dark: {
-    text: "#ECEDEE",
+    text: "#F9FAFB",
+    textSecondary: "#9CA3AF",
     buttonText: "#FFFFFF",
-    tabIconDefault: "#9BA1A6",
-    tabIconSelected: tintColorDark,
-    link: "#0A84FF",
-    backgroundRoot: "#1F2123", // Elevation 0
-    backgroundDefault: "#2A2C2E", // Elevation 1
-    backgroundSecondary: "#353739", // Elevation 2
-    backgroundTertiary: "#404244", // Elevation 3
+    tabIconDefault: "#9CA3AF",
+    tabIconSelected: "#60A5FA",
+    link: "#60A5FA",
+    backgroundRoot: "#1F2937",
+    backgroundDefault: "#374151",
+    backgroundSecondary: "#4B5563",
+    backgroundTertiary: "#6B7280",
+    primary: "#3B82F6",
+    secondary: "#2DD4BF",
+    success: "#34D399",
+    warning: "#FBBF24",
+    error: "#F87171",
+    border: "#374151",
+    cardBackground: "#374151",
   },
 };
 
@@ -54,52 +67,60 @@ export const BorderRadius = {
 };
 
 export const Typography = {
+  readingDisplay: {
+    fontSize: 48,
+    fontWeight: "700" as const,
+  },
   h1: {
     fontSize: 32,
-    lineHeight: 40,
     fontWeight: "700" as const,
   },
   h2: {
-    fontSize: 28,
-    lineHeight: 36,
-    fontWeight: "700" as const,
+    fontSize: 24,
+    fontWeight: "600" as const,
   },
   h3: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: "600" as const,
-  },
-  h4: {
-    fontSize: 20,
-    lineHeight: 28,
-    fontWeight: "600" as const,
+    fontSize: 18,
+    fontWeight: "500" as const,
   },
   body: {
     fontSize: 16,
-    lineHeight: 24,
+    fontWeight: "400" as const,
+  },
+  caption: {
+    fontSize: 14,
     fontWeight: "400" as const,
   },
   small: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
     fontWeight: "400" as const,
   },
   link: {
     fontSize: 16,
-    lineHeight: 24,
     fontWeight: "400" as const,
+  },
+};
+
+export const Shadows = {
+  fab: {
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  card: {
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: "system-ui",
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: "ui-serif",
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: "ui-rounded",
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: "ui-monospace",
   },
   default: {
