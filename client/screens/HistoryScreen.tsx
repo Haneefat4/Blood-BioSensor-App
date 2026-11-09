@@ -4,9 +4,9 @@ import {
   FlatList,
   StyleSheet,
   Pressable,
-  Alert,
   ScrollView,
   TextInput,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -16,6 +16,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
+import { useFeedback } from "@/components/FeedbackProvider";
 import { useTheme } from "@/hooks/useTheme";
 import {
   BorderRadius,
@@ -34,6 +35,7 @@ import { usePreferencesContext } from "@/context/PreferencesContext";
 import { buildReadingsCsv } from "@/lib/exportFormat";
 import {
   filterReadings,
+  localDateKey,
   startOfLocalDay,
   type HistoryRange,
 } from "@/lib/readingOrder";
@@ -80,6 +82,7 @@ export default function HistoryScreen() {
     useNavigation<NativeStackNavigationProp<HistoryStackParamList>>();
   const { readings, removeReading } = useReadingsContext();
   const { preferences } = usePreferencesContext();
+  const { confirm, notify } = useFeedback();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [query, setQuery] = useState("");
@@ -107,24 +110,27 @@ export default function HistoryScreen() {
   const selectedDayReadings = useMemo(() => {
     if (!selectedDay) return [];
     return filteredReadings.filter(
-      (reading) =>
-        new Date(reading.timestamp).toDateString() === selectedDay.key,
+      (reading) => localDateKey(reading.timestamp) === selectedDay.key,
     );
   }, [filteredReadings, selectedDay]);
 
-  const handleDelete = (reading: Reading) => {
-    Alert.alert(
-      "Delete Reading",
-      `Delete this ${READING_CONFIG[reading.type].label} reading from your log?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => removeReading(reading.id),
-        },
-      ],
-    );
+  const handleDelete = async (reading: Reading) => {
+    const confirmed = await confirm({
+      title: "Delete Reading",
+      message: `Delete this ${READING_CONFIG[reading.type].label} reading from your log?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await removeReading(reading.id);
+      notify({ tone: "success", message: "Reading deleted." });
+    } catch {
+      notify({
+        tone: "error",
+        message: "Could not delete that reading. Please try again.",
+      });
+    }
   };
 
   const handleExport = async (reading: Reading) => {
@@ -139,18 +145,21 @@ export default function HistoryScreen() {
         csv,
         "text/csv",
       );
+      if (Platform.OS === "web") {
+        notify({ tone: "success", message: "CSV downloaded." });
+      }
     } catch (error) {
       if (isShareCancelled(error)) return;
-      Alert.alert(
-        "Export failed",
-        "This reading could not be shared. Please try again.",
-      );
+      notify({
+        tone: "error",
+        message: "This reading could not be exported. Please try again.",
+      });
     }
   };
 
   const handleDayPress = (date: Date) => {
     setSelectedDay({
-      key: date.toDateString(),
+      key: localDateKey(date),
       label: date.toLocaleDateString(undefined, {
         weekday: "short",
         month: "short",
@@ -333,8 +342,8 @@ export default function HistoryScreen() {
       ) : null}
 
       <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
-        Swipe a row left to export or delete. Delete is also on the row. Export
-        creates a CSV file for you to share.
+        Each row has Export and Delete. On a phone you can also swipe the row
+        left.
       </ThemedText>
     </View>
   );

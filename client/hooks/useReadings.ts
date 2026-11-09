@@ -74,6 +74,47 @@ export function useReadings() {
     [],
   );
 
+  const updateReading = useCallback(
+    async (
+      id: string,
+      type: ReadingType,
+      value: number,
+      options?: AddReadingOptions,
+    ) => {
+      const config = READING_CONFIG[type];
+      const timestamp =
+        options?.timestamp != null && Number.isFinite(options.timestamp)
+          ? options.timestamp
+          : Date.now();
+      const updated: Reading = {
+        id,
+        type,
+        value,
+        unit: config.defaultUnit,
+        timestamp,
+        notes: options?.notes,
+        status: assessReading({
+          type,
+          canonicalValue: value,
+          isFasting: options?.isFasting,
+          sex: options?.referenceSex,
+        }).severity,
+        isFasting: options?.isFasting,
+        tags: options?.tags,
+        photoUri: options?.photoUri,
+      };
+      await saveReading(updated);
+      setReadings((prev) =>
+        sortReadingsByTimestampDesc([
+          updated,
+          ...prev.filter((item) => item.id !== updated.id),
+        ]),
+      );
+      return updated;
+    },
+    [],
+  );
+
   const removeReading = useCallback(async (id: string) => {
     await deleteReading(id);
     setReadings((prev) => prev.filter((r) => r.id !== id));
@@ -98,6 +139,7 @@ export function useReadings() {
     readings,
     isLoading,
     addReading,
+    updateReading,
     removeReading,
     getLatestByType,
     getLatestReading,

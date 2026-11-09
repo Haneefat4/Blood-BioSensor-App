@@ -10,6 +10,12 @@ interface ReadingsContextType {
     value: number,
     options?: AddReadingOptions,
   ) => Promise<Reading>;
+  updateReading: (
+    id: string,
+    type: ReadingType,
+    value: number,
+    options?: AddReadingOptions,
+  ) => Promise<Reading>;
   removeReading: (id: string) => Promise<void>;
   getLatestByType: (type: ReadingType) => Reading | undefined;
   getLatestReading: () => Reading | undefined;

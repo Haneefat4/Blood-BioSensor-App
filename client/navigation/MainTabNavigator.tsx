@@ -7,11 +7,15 @@ import HomeStackNavigator from "@/navigation/HomeStackNavigator";
 import HistoryStackNavigator from "@/navigation/HistoryStackNavigator";
 import ProfileStackNavigator from "@/navigation/ProfileStackNavigator";
 import { useTheme } from "@/hooks/useTheme";
+import type { NavigatorScreenParams } from "@react-navigation/native";
+import type { HistoryStackParamList } from "@/navigation/HistoryStackNavigator";
+import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
+import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 
 export type MainTabParamList = {
-  HomeTab: undefined;
-  HistoryTab: undefined;
-  ProfileTab: undefined;
+  HomeTab: NavigatorScreenParams<HomeStackParamList>;
+  HistoryTab: NavigatorScreenParams<HistoryStackParamList>;
+  ProfileTab: NavigatorScreenParams<ProfileStackParamList>;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();

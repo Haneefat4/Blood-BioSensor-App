@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { Platform, View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Swipeable } from "react-native-gesture-handler";
@@ -114,123 +114,150 @@ export function ReadingListItem({
   );
 
   const row = (
-    <AnimatedPressable
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      accessibilityRole="button"
-      accessibilityLabel={summary}
-      accessibilityHint="Opens this reading. Swipe left to export or delete."
-      accessibilityActions={[
-        { name: "export", label: "Export reading" },
-        { name: "delete", label: "Delete reading" },
-      ]}
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "export") onExport?.();
-        if (event.nativeEvent.actionName === "delete") onDelete?.();
-      }}
-      style={[
-        styles.container,
-        { backgroundColor: theme.backgroundDefault },
-        animatedStyle,
-      ]}
+    <View
+      style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
     >
-      <View
-        style={[
-          styles.iconContainer,
-          { backgroundColor: colors.primary + "1A" },
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={summary}
+        accessibilityHint="Opens this reading"
+        accessibilityActions={[
+          { name: "export", label: "Export reading" },
+          { name: "delete", label: "Delete reading" },
         ]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "export") onExport?.();
+          if (event.nativeEvent.actionName === "delete") onDelete?.();
+        }}
+        style={[styles.main, animatedStyle]}
       >
-        <Feather
-          name={config.icon as keyof typeof Feather.glyphMap}
-          size={20}
-          color={colors.primary}
-        />
-      </View>
-      <View style={styles.content}>
-        <View style={styles.topRow}>
-          <View style={styles.titleRow}>
-            <ThemedText style={styles.type}>{config.label}</ThemedText>
-            {reading.isFasting ? (
-              <View
-                style={[
-                  styles.fastingBadge,
-                  { backgroundColor: colors.warning + "20" },
-                ]}
-              >
-                <Feather name="clock" size={10} color={colors.warning} />
-                <ThemedText
-                  style={[styles.fastingText, { color: colors.warning }]}
-                >
-                  Fasting
-                </ThemedText>
-              </View>
-            ) : null}
-          </View>
-          <StatusBadge status={assessment.severity} label={assessment.label} />
-        </View>
-        <View style={styles.bottomRow}>
-          <View style={styles.valueContainer}>
-            <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
-            <ThemedText style={[styles.unit, { color: theme.textSecondary }]}>
-              {unitText(reading.type)}
-            </ThemedText>
-          </View>
-          <ThemedText style={[styles.date, { color: theme.textSecondary }]}>
-            {formattedDate}
-          </ThemedText>
-        </View>
-        {tagLabels && tagLabels.length > 0 ? (
-          <View style={styles.tagsRow}>
-            {tagLabels.map((label) => (
-              <View
-                key={label}
-                style={[
-                  styles.tagChip,
-                  { backgroundColor: colors.primary + "15" },
-                ]}
-              >
-                <ThemedText style={[styles.tagText, { color: colors.primary }]}>
-                  {label}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        ) : null}
-        {reading.notes ? (
-          <ThemedText
-            style={[styles.notes, { color: theme.textSecondary }]}
-            numberOfLines={1}
-          >
-            {reading.notes}
-          </ThemedText>
-        ) : null}
-        {reading.photoUri ? (
-          <Image
-            source={{ uri: reading.photoUri }}
-            style={styles.thumbnail}
-            contentFit="cover"
-            accessibilityLabel="Attached reading photo"
-          />
-        ) : null}
-      </View>
-      {onDelete ? (
-        <Pressable
-          onPress={onDelete}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete ${config.label} reading from ${formattedDate}`}
-          style={({ pressed }) => [
-            styles.deleteButton,
-            { opacity: pressed ? 0.7 : 1 },
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: colors.primary + "1A" },
           ]}
         >
-          <Feather name="trash-2" size={18} color={colors.error} />
-        </Pressable>
-      ) : null}
-    </AnimatedPressable>
+          <Feather
+            name={config.icon as keyof typeof Feather.glyphMap}
+            size={20}
+            color={colors.primary}
+          />
+        </View>
+        <View style={styles.content}>
+          <View style={styles.topRow}>
+            <View style={styles.titleRow}>
+              <ThemedText style={styles.type}>{config.label}</ThemedText>
+              {reading.isFasting ? (
+                <View
+                  style={[
+                    styles.fastingBadge,
+                    { backgroundColor: colors.warning + "20" },
+                  ]}
+                >
+                  <Feather name="clock" size={10} color={colors.warning} />
+                  <ThemedText
+                    style={[styles.fastingText, { color: colors.warning }]}
+                  >
+                    Fasting
+                  </ThemedText>
+                </View>
+              ) : null}
+            </View>
+            <StatusBadge
+              status={assessment.severity}
+              label={assessment.label}
+            />
+          </View>
+          <View style={styles.bottomRow}>
+            <View style={styles.valueContainer}>
+              <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
+              <ThemedText style={[styles.unit, { color: theme.textSecondary }]}>
+                {unitText(reading.type)}
+              </ThemedText>
+            </View>
+            <ThemedText style={[styles.date, { color: theme.textSecondary }]}>
+              {formattedDate}
+            </ThemedText>
+          </View>
+          {tagLabels && tagLabels.length > 0 ? (
+            <View style={styles.tagsRow}>
+              {tagLabels.map((label) => (
+                <View
+                  key={label}
+                  style={[
+                    styles.tagChip,
+                    { backgroundColor: colors.primary + "15" },
+                  ]}
+                >
+                  <ThemedText
+                    style={[styles.tagText, { color: colors.primary }]}
+                  >
+                    {label}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {reading.notes ? (
+            <ThemedText
+              style={[styles.notes, { color: theme.textSecondary }]}
+              numberOfLines={1}
+            >
+              {reading.notes}
+            </ThemedText>
+          ) : null}
+          {reading.photoUri ? (
+            <Image
+              source={{ uri: reading.photoUri }}
+              style={styles.thumbnail}
+              contentFit="cover"
+              accessibilityLabel="Attached reading photo"
+            />
+          ) : null}
+        </View>
+      </AnimatedPressable>
+      <View style={styles.rowActions}>
+        {onExport ? (
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              onExport();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Export ${config.label} reading from ${formattedDate}`}
+            accessibilityHint="Downloads a CSV file for this reading"
+            style={({ pressed }) => [
+              styles.iconButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Feather name="download" size={18} color={colors.primary} />
+          </Pressable>
+        ) : null}
+        {onDelete ? (
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              onDelete();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${config.label} reading from ${formattedDate}`}
+            style={({ pressed }) => [
+              styles.iconButton,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
+          >
+            <Feather name="trash-2" size={18} color={colors.error} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 
-  if (!onDelete && !onExport) return row;
+  if (Platform.OS === "web" || (!onDelete && !onExport)) return row;
 
   return (
     <Swipeable
@@ -262,6 +289,20 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  main: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  rowActions: {
+    justifyContent: "center",
+  },
+  iconButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
   },
   topRow: {
     flexDirection: "row",
@@ -336,13 +377,6 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: BorderRadius.xs,
     marginTop: Spacing.sm,
-  },
-  deleteButton: {
-    width: MinTouchTarget,
-    height: MinTouchTarget,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: Spacing.xs,
   },
   actions: {
     flexDirection: "row",

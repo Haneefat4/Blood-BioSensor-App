@@ -56,6 +56,13 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
       accessible
       accessibilityRole={onPress ? "button" : "summary"}
       accessibilityLabel={summary}
+      accessibilityHint={
+        onPress
+          ? reading
+            ? "Opens this reading"
+            : `Adds a ${config.label} reading`
+          : undefined
+      }
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },

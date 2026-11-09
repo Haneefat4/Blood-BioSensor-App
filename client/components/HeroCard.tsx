@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
@@ -12,24 +12,30 @@ import { READING_CONFIG } from "@/types";
 
 interface HeroCardProps {
   reading?: Reading;
+  onPress?: () => void;
 }
 
-export function HeroCard({ reading }: HeroCardProps) {
+export function HeroCard({ reading, onPress }: HeroCardProps) {
   const { isDark } = useTheme();
   const { valueText, unitText, assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
 
   if (!reading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.primary }]}>
+      <CardShell
+        onPress={onPress}
+        label="No readings yet. Add a reading."
+        hint="Opens the form to add a reading"
+        backgroundColor={colors.primary}
+      >
         <View style={styles.emptyContent}>
           <Feather name="plus-circle" size={48} color="rgba(255,255,255,0.7)" />
           <ThemedText style={styles.emptyTitle}>No readings yet</ThemedText>
           <ThemedText style={styles.emptySubtitle}>
-            Tap the + button to add your first reading
+            Tap here or the + button to add your first reading
           </ThemedText>
         </View>
-      </View>
+      </CardShell>
     );
   }
 
@@ -38,11 +44,11 @@ export function HeroCard({ reading }: HeroCardProps) {
   const timeAgo = getTimeAgo(reading.timestamp);
 
   return (
-    <View
-      accessible
-      accessibilityRole="summary"
-      accessibilityLabel={`${config.label}, ${valueText(reading)} ${unitText(reading.type)}, ${assessment.label}, ${timeAgo}`}
-      style={[styles.container, { backgroundColor: colors.primary }]}
+    <CardShell
+      onPress={onPress}
+      label={`${config.label}, ${valueText(reading)} ${unitText(reading.type)}, ${assessment.label}, ${timeAgo}`}
+      hint="Opens this reading"
+      backgroundColor={colors.primary}
     >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -60,7 +66,49 @@ export function HeroCard({ reading }: HeroCardProps) {
         <ThemedText style={styles.unit}>{unitText(reading.type)}</ThemedText>
       </View>
       <ThemedText style={styles.timestamp}>{timeAgo}</ThemedText>
-    </View>
+    </CardShell>
+  );
+}
+
+function CardShell({
+  children,
+  onPress,
+  label,
+  hint,
+  backgroundColor,
+}: {
+  children: React.ReactNode;
+  onPress?: () => void;
+  label: string;
+  hint: string;
+  backgroundColor: string;
+}) {
+  if (!onPress) {
+    return (
+      <View
+        accessible
+        accessibilityRole="summary"
+        accessibilityLabel={label}
+        style={[styles.container, { backgroundColor }]}
+      >
+        {children}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+      style={({ pressed }) => [
+        styles.container,
+        { backgroundColor, opacity: pressed ? 0.92 : 1 },
+      ]}
+    >
+      {children}
+    </Pressable>
   );
 }
 

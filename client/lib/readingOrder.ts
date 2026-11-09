@@ -8,6 +8,15 @@ export function startOfLocalDay(value: number | Date): Date {
   return date;
 }
 
+/** Local calendar day as YYYY-MM-DD, for grouping a timestamp onto a chart cell. */
+export function localDateKey(value: number | Date): string {
+  const date =
+    value instanceof Date ? new Date(value.getTime()) : new Date(value);
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 /** Today and the previous six local midnights, through `now`. */
 export function sevenDayWindow(now: number): { start: number; end: number } {
   const start = startOfLocalDay(now);

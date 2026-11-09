@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  Alert,
-  FlatList,
-} from "react-native";
+import { View, StyleSheet, TextInput, Pressable, FlatList } from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -23,6 +16,7 @@ import {
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import type { Medication } from "@/types";
 
@@ -41,6 +35,7 @@ export default function MedicationsScreen() {
   const colors = isDark ? Colors.dark : Colors.light;
   const { medications, addMedication, removeMedication } =
     useMedicationsContext();
+  const { confirm, notify } = useFeedback();
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -52,10 +47,10 @@ export default function MedicationsScreen() {
 
   const handleAdd = async () => {
     if (!name.trim() || !dosage.trim()) {
-      Alert.alert(
-        "Required Fields",
-        "Please enter medication name and dosage.",
-      );
+      notify({
+        tone: "error",
+        message: "Enter the medication name and dosage.",
+      });
       return;
     }
 
@@ -71,7 +66,10 @@ export default function MedicationsScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       resetForm();
     } catch {
-      Alert.alert("Error", "Failed to save medication.");
+      notify({
+        tone: "error",
+        message: "Could not save that medication. Please try again.",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -86,22 +84,24 @@ export default function MedicationsScreen() {
     setShowForm(false);
   };
 
-  const handleDelete = (med: Medication) => {
-    Alert.alert(
-      "Delete Medication",
-      `Are you sure you want to delete ${med.name}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            await removeMedication(med.id);
-          },
-        },
-      ],
-    );
+  const handleDelete = async (med: Medication) => {
+    const confirmed = await confirm({
+      title: "Delete Medication",
+      message: `Delete ${med.name} from your list?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await removeMedication(med.id);
+      notify({ tone: "success", message: `${med.name} deleted.` });
+    } catch {
+      notify({
+        tone: "error",
+        message: "Could not delete that medication. Please try again.",
+      });
+    }
   };
 
   const renderMedication = ({ item }: { item: Medication }) => (

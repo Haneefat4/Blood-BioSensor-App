@@ -3,18 +3,29 @@ import { View, StyleSheet, ScrollView, Pressable, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import type {
+  NativeStackNavigationProp,
+  NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingDisplay } from "@/hooks/useReadingDisplay";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  Colors,
+  MinTouchTarget,
+} from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import type { HistoryStackParamList } from "@/navigation/HistoryStackNavigator";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
 type Props = NativeStackScreenProps<HistoryStackParamList, "ReadingDetail">;
@@ -27,7 +38,10 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
   const { theme, isDark } = useTheme();
   const { valueText, unitText, assess, rangeText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { readings } = useReadingsContext();
+  const { readings, removeReading } = useReadingsContext();
+  const { confirm, notify } = useFeedback();
+  const rootNavigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const reading = readings.find((item) => item.id === readingId);
   const [photoOpen, setPhotoOpen] = useState(false);
 
@@ -52,6 +66,25 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
     reading.tags?.map(
       (tagId) => READING_TAGS.find((tag) => tag.id === tagId)?.label || tagId,
     ) ?? [];
+
+  const handleDelete = async () => {
+    const confirmed = await confirm({
+      title: "Delete Reading",
+      message: `Delete this ${config.label} reading from your log?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await removeReading(reading.id);
+      notify({ tone: "success", message: "Reading deleted." });
+    } catch {
+      notify({
+        tone: "error",
+        message: "Could not delete that reading. Please try again.",
+      });
+    }
+  };
 
   return (
     <ScrollView
@@ -123,6 +156,35 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
           </ThemedText>
           <ReferenceRangeNote />
         </View>
+      </View>
+
+      <View style={styles.actions}>
+        <Pressable
+          onPress={() =>
+            rootNavigation.navigate("AddReading", { readingId: reading.id })
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Edit reading"
+          style={({ pressed }) => [
+            styles.actionButton,
+            { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="edit-2" size={18} color="#FFFFFF" />
+          <ThemedText style={styles.actionLabel}>Edit</ThemedText>
+        </Pressable>
+        <Pressable
+          onPress={handleDelete}
+          accessibilityRole="button"
+          accessibilityLabel="Delete reading"
+          style={({ pressed }) => [
+            styles.actionButton,
+            { backgroundColor: colors.error, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="trash-2" size={18} color="#FFFFFF" />
+          <ThemedText style={styles.actionLabel}>Delete</ThemedText>
+        </Pressable>
       </View>
 
       {reading.photoUri ? (
@@ -258,6 +320,26 @@ const styles = StyleSheet.create({
   rangeText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: MinTouchTarget,
+    borderRadius: BorderRadius.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+  },
+  actionLabel: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   photo: {
     width: "100%",

@@ -8,9 +8,11 @@ import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useTheme } from "@/hooks/useTheme";
 import { MinTouchTarget } from "@/constants/theme";
 
+import type { ReadingType } from "@/types";
+
 export type RootStackParamList = {
   Main: undefined;
-  AddReading: undefined;
+  AddReading: { readingId?: string; initialType?: ReadingType } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
