@@ -1,11 +1,12 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Pressable } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import AddReadingScreen from "@/screens/AddReadingScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useTheme } from "@/hooks/useTheme";
+import { MinTouchTarget } from "@/constants/theme";
 
 export type RootStackParamList = {
   Main: undefined;
@@ -34,8 +35,13 @@ export default function RootStackNavigator() {
           headerLeft: () => (
             <Pressable
               onPress={() => navigation.goBack()}
-              hitSlop={8}
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              accessibilityRole="button"
+              accessibilityLabel="Close add reading"
+              accessibilityHint="Discards this entry"
+              style={({ pressed }) => [
+                styles.closeButton,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
             >
               <Feather name="x" size={24} color={theme.text} />
             </Pressable>
@@ -45,3 +51,12 @@ export default function RootStackNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  closeButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

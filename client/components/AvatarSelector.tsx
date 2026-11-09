@@ -13,10 +13,10 @@ interface AvatarSelectorProps {
 }
 
 const AVATARS = [
-  { icon: "activity" as const, color: "#2563EB" },
-  { icon: "heart" as const, color: "#EF4444" },
-  { icon: "user" as const, color: "#14B8A6" },
-  { icon: "shield" as const, color: "#8B5CF6" },
+  { icon: "activity" as const, color: "#2563EB", label: "Activity" },
+  { icon: "heart" as const, color: "#EF4444", label: "Heart" },
+  { icon: "user" as const, color: "#14B8A6", label: "Person" },
+  { icon: "shield" as const, color: "#8B5CF6", label: "Shield" },
 ];
 
 export function AvatarSelector({
@@ -43,11 +43,14 @@ export function AvatarSelector({
         />
       </View>
       <ThemedText style={styles.name}>{displayName}</ThemedText>
-      <View style={styles.selectorRow}>
+      <View style={styles.selectorRow} accessibilityRole="radiogroup">
         {AVATARS.map((avatar, index) => (
           <Pressable
-            key={index}
+            key={avatar.label}
             onPress={() => onSelect(index)}
+            accessibilityRole="radio"
+            accessibilityLabel={`${avatar.label} avatar`}
+            accessibilityState={{ selected: index === selectedIndex }}
             style={({ pressed }) => [
               styles.avatarOption,
               {

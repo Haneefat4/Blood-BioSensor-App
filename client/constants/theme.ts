@@ -41,6 +41,9 @@ export const Colors = {
   },
 };
 
+/** Apple HIG / Material minimum interactive size. */
+export const MinTouchTarget = 44;
+
 export const Spacing = {
   xs: 4,
   sm: 8,

@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, Colors } from "@/constants/theme";
+import { MinTouchTarget, Spacing, Colors } from "@/constants/theme";
 
 interface SettingsRowProps {
   icon?: keyof typeof Feather.glyphMap;
@@ -46,6 +46,7 @@ export function SettingsRow({
           <Switch
             value={switchValue}
             onValueChange={onSwitchChange}
+            accessibilityLabel={label}
             trackColor={{
               false: theme.backgroundSecondary,
               true: colors.primary,
@@ -78,7 +79,12 @@ export function SettingsRow({
     return (
       <Pressable
         onPress={onPress}
-        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        accessibilityRole="button"
+        accessibilityLabel={value ? `${label}, ${value}` : label}
+        style={({ pressed }) => ({
+          opacity: pressed ? 0.7 : 1,
+          minHeight: MinTouchTarget,
+        })}
       >
         {content}
       </Pressable>

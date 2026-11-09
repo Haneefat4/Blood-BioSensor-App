@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { Swipeable } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,7 +13,12 @@ import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingDisplay } from "@/hooks/useReadingDisplay";
-import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import {
+  BorderRadius,
+  MinTouchTarget,
+  Spacing,
+  Colors,
+} from "@/constants/theme";
 import type { Reading } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
@@ -20,6 +26,7 @@ interface ReadingListItemProps {
   reading: Reading;
   onPress?: () => void;
   onDelete?: () => void;
+  onExport?: () => void;
 }
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -28,6 +35,7 @@ export function ReadingListItem({
   reading,
   onPress,
   onDelete,
+  onExport,
 }: ReadingListItemProps) {
   const { theme, isDark } = useTheme();
   const { valueText, unitText, assess } = useReadingDisplay();
@@ -35,6 +43,7 @@ export function ReadingListItem({
   const config = READING_CONFIG[reading.type];
   const assessment = assess(reading);
   const scale = useSharedValue(1);
+  const swipeRef = useRef<Swipeable>(null);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -59,15 +68,67 @@ export function ReadingListItem({
   );
 
   const tagLabels = reading.tags?.map((tagId) => {
-    const tag = READING_TAGS.find((t) => t.id === tagId);
+    const tag = READING_TAGS.find((item) => item.id === tagId);
     return tag?.label || tagId;
   });
 
-  return (
+  const summary = `${config.label}, ${valueText(reading)} ${unitText(reading.type)}, ${assessment.label}, ${formattedDate}`;
+
+  const renderActions = () => (
+    <View style={styles.actions}>
+      {onExport ? (
+        <Pressable
+          onPress={() => {
+            swipeRef.current?.close();
+            onExport();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Export ${config.label} reading`}
+          style={({ pressed }) => [
+            styles.action,
+            { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="share" size={18} color="#FFFFFF" />
+          <ThemedText style={styles.actionText}>Export</ThemedText>
+        </Pressable>
+      ) : null}
+      {onDelete ? (
+        <Pressable
+          onPress={() => {
+            swipeRef.current?.close();
+            onDelete();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${config.label} reading`}
+          style={({ pressed }) => [
+            styles.action,
+            { backgroundColor: colors.error, opacity: pressed ? 0.7 : 1 },
+          ]}
+        >
+          <Feather name="trash-2" size={18} color="#FFFFFF" />
+          <ThemedText style={styles.actionText}>Delete</ThemedText>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
+  const row = (
     <AnimatedPressable
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={summary}
+      accessibilityHint="Opens this reading. Swipe left to export or delete."
+      accessibilityActions={[
+        { name: "export", label: "Export reading" },
+        { name: "delete", label: "Delete reading" },
+      ]}
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "export") onExport?.();
+        if (event.nativeEvent.actionName === "delete") onDelete?.();
+      }}
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
@@ -80,7 +141,11 @@ export function ReadingListItem({
           { backgroundColor: colors.primary + "1A" },
         ]}
       >
-        <Feather name={config.icon as any} size={20} color={colors.primary} />
+        <Feather
+          name={config.icon as keyof typeof Feather.glyphMap}
+          size={20}
+          color={colors.primary}
+        />
       </View>
       <View style={styles.content}>
         <View style={styles.topRow}>
@@ -117,9 +182,9 @@ export function ReadingListItem({
         </View>
         {tagLabels && tagLabels.length > 0 ? (
           <View style={styles.tagsRow}>
-            {tagLabels.map((label, index) => (
+            {tagLabels.map((label) => (
               <View
-                key={index}
+                key={label}
                 style={[
                   styles.tagChip,
                   { backgroundColor: colors.primary + "15" },
@@ -152,7 +217,8 @@ export function ReadingListItem({
       {onDelete ? (
         <Pressable
           onPress={onDelete}
-          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${config.label} reading from ${formattedDate}`}
           style={({ pressed }) => [
             styles.deleteButton,
             { opacity: pressed ? 0.7 : 1 },
@@ -162,6 +228,19 @@ export function ReadingListItem({
         </Pressable>
       ) : null}
     </AnimatedPressable>
+  );
+
+  if (!onDelete && !onExport) return row;
+
+  return (
+    <Swipeable
+      ref={swipeRef}
+      renderRightActions={renderActions}
+      overshootRight={false}
+      friction={2}
+    >
+      {row}
+    </Swipeable>
   );
 }
 
@@ -174,8 +253,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
+    width: MinTouchTarget,
+    height: MinTouchTarget,
     borderRadius: BorderRadius.sm,
     alignItems: "center",
     justifyContent: "center",
@@ -194,6 +273,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
+    flexShrink: 1,
   },
   type: {
     fontSize: 16,
@@ -258,7 +338,27 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   deleteButton: {
-    padding: Spacing.sm,
-    marginLeft: Spacing.sm,
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: Spacing.xs,
+  },
+  actions: {
+    flexDirection: "row",
+    marginBottom: 0,
+  },
+  action: {
+    width: 88,
+    minHeight: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+  },
+  actionText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

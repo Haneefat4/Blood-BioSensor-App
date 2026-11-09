@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Appearance, StyleSheet } from "react-native";
+import { ActivityIndicator, Appearance, StyleSheet, View } from "react-native";
 import {
   DarkTheme,
   DefaultTheme,
@@ -10,11 +10,9 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/query-client";
-
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { DisclaimerScreen } from "@/screens/DisclaimerScreen";
 import { ReadingsProvider } from "@/context/ReadingsContext";
 import {
   PreferencesProvider,
@@ -25,6 +23,7 @@ import {
   configureNotificationHandler,
   syncScheduledReminders,
 } from "@/lib/reminders";
+import { useDisclaimer } from "@/hooks/useDisclaimer";
 import { useTheme } from "@/hooks/useTheme";
 import { DEFAULT_USER_PREFERENCES } from "@/types";
 
@@ -47,6 +46,43 @@ function ReminderSync() {
   }, [isLoading, notificationsEnabled, reminderSettings]);
 
   return null;
+}
+
+function AppShell() {
+  const { accepted, accept } = useDisclaimer();
+  const { theme } = useTheme();
+
+  if (accepted === null) {
+    return (
+      <View
+        style={[
+          styles.root,
+          styles.centered,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+        accessibilityLabel="Loading"
+      >
+        <ActivityIndicator color={theme.primary} />
+        <StatusBar style="auto" />
+      </View>
+    );
+  }
+
+  if (!accepted) {
+    return (
+      <>
+        <DisclaimerScreen onAccept={accept} />
+        <StatusBar style="auto" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ReminderSync />
+      <ThemedNavigation />
+    </>
+  );
 }
 
 function ThemedNavigation() {
@@ -89,22 +125,19 @@ function ThemedNavigation() {
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <GestureHandlerRootView style={styles.root}>
-            <KeyboardProvider>
-              <ReadingsProvider>
-                <PreferencesProvider>
-                  <MedicationsProvider>
-                    <ReminderSync />
-                    <ThemedNavigation />
-                  </MedicationsProvider>
-                </PreferencesProvider>
-              </ReadingsProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </SafeAreaProvider>
-      </QueryClientProvider>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={styles.root}>
+          <KeyboardProvider>
+            <ReadingsProvider>
+              <PreferencesProvider>
+                <MedicationsProvider>
+                  <AppShell />
+                </MedicationsProvider>
+              </PreferencesProvider>
+            </ReadingsProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
@@ -112,5 +145,9 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  centered: {
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

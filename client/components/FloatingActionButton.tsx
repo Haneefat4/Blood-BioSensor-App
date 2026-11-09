@@ -44,6 +44,7 @@ export function FloatingActionButton({
       onPressOut={handlePressOut}
       accessibilityRole="button"
       accessibilityLabel="Add reading"
+      accessibilityHint="Opens a form to log a reading you already have"
       style={[
         styles.container,
         {
