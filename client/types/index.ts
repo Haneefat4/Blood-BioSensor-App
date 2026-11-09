@@ -103,6 +103,7 @@ export const READING_CONFIG: Record<
   },
 };
 
+/** `value` must already be in the canonical unit for `type` (see client/lib/units.ts). */
 export function getReadingStatus(
   type: ReadingType,
   value: number,

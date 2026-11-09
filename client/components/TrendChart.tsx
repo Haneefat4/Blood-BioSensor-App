@@ -3,6 +3,8 @@ import { View, StyleSheet, Dimensions } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
+import { formatMeasurement } from "@/lib/units";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading, ReadingType } from "@/types";
 
@@ -17,7 +19,9 @@ const CHART_WIDTH = SCREEN_WIDTH - Spacing.lg * 4;
 
 export function TrendChart({ readings, type }: TrendChartProps) {
   const { theme, isDark } = useTheme();
+  const { units, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
+  const trendTitle = `7-Day Trend (${unitText(type)})`;
 
   const filteredReadings = readings
     .filter((r) => r.type === type)
@@ -29,7 +33,7 @@ export function TrendChart({ readings, type }: TrendChartProps) {
       <View
         style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
       >
-        <ThemedText style={styles.title}>7-Day Trend</ThemedText>
+        <ThemedText style={styles.title}>{trendTitle}</ThemedText>
         <View style={styles.emptyChart}>
           <ThemedText
             style={[styles.emptyText, { color: theme.textSecondary }]}
@@ -56,18 +60,18 @@ export function TrendChart({ readings, type }: TrendChartProps) {
     <View
       style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
     >
-      <ThemedText style={styles.title}>7-Day Trend</ThemedText>
+      <ThemedText style={styles.title}>{trendTitle}</ThemedText>
       <View style={styles.chartContainer}>
         <View style={styles.yAxis}>
           <ThemedText
             style={[styles.axisLabel, { color: theme.textSecondary }]}
           >
-            {maxValue}
+            {formatMeasurement(type, maxValue, units)}
           </ThemedText>
           <ThemedText
             style={[styles.axisLabel, { color: theme.textSecondary }]}
           >
-            {minValue}
+            {formatMeasurement(type, minValue, units)}
           </ThemedText>
         </View>
         <View style={styles.chart}>

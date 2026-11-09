@@ -10,6 +10,7 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
@@ -28,6 +29,7 @@ export function ReadingListItem({
   onDelete,
 }: ReadingListItemProps) {
   const { theme, isDark } = useTheme();
+  const { valueText, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[reading.type];
   const scale = useSharedValue(1);
@@ -102,9 +104,9 @@ export function ReadingListItem({
         </View>
         <View style={styles.bottomRow}>
           <View style={styles.valueContainer}>
-            <ThemedText style={styles.value}>{reading.value}</ThemedText>
+            <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
             <ThemedText style={[styles.unit, { color: theme.textSecondary }]}>
-              {reading.unit}
+              {unitText(reading.type)}
             </ThemedText>
           </View>
           <ThemedText style={[styles.date, { color: theme.textSecondary }]}>

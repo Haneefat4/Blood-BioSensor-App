@@ -26,6 +26,7 @@ import { usePreferencesContext } from "@/context/PreferencesContext";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
+import { displayUnitFor, formatMeasurement } from "@/lib/units";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
@@ -91,8 +92,8 @@ export default function ProfileScreen() {
           date.toLocaleDateString(),
           date.toLocaleTimeString(),
           READING_CONFIG[r.type].label,
-          r.value.toString(),
-          r.unit,
+          formatMeasurement(r.type, r.value, preferences.units),
+          displayUnitFor(r.type, preferences.units),
           r.status,
           r.isFasting ? "Yes" : "No",
           tags,
@@ -174,7 +175,7 @@ export default function ProfileScreen() {
               <tr>
                 <td>${new Date(r.timestamp).toLocaleDateString()} ${new Date(r.timestamp).toLocaleTimeString()}</td>
                 <td>${READING_CONFIG[r.type].label}</td>
-                <td>${r.value} ${r.unit}</td>
+                <td>${formatMeasurement(r.type, r.value, preferences.units)} ${displayUnitFor(r.type, preferences.units)}</td>
                 <td class="${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</td>
                 <td>${r.isFasting ? '<span class="fasting">Fasting</span>' : "-"}</td>
                 <td>${r.notes || "-"}</td>
@@ -332,6 +333,10 @@ export default function ProfileScreen() {
             updatePreferences({ units: newUnit });
           }}
         />
+        <ThemedText style={[styles.unitsHint, { color: theme.textSecondary }]}>
+          Applies to glucose and cholesterol. Hemoglobin and platelets keep
+          their own units.
+        </ThemedText>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingsRow
           icon="bell"
@@ -399,6 +404,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.sm,
     fontSize: 16,
+  },
+  unitsHint: {
+    fontSize: 13,
+    marginTop: -Spacing.xs,
+    marginBottom: Spacing.sm,
   },
   dangerSection: {
     marginTop: Spacing.xl,

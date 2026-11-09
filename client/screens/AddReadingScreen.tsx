@@ -21,6 +21,12 @@ import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import { usePreferencesContext } from "@/context/PreferencesContext";
+import {
+  displayUnitFor,
+  formatNormalRange,
+  toCanonicalValue,
+} from "@/lib/units";
 import type { ReadingType, ReadingTag } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
@@ -37,6 +43,7 @@ export default function AddReadingScreen() {
   const colors = isDark ? Colors.dark : Colors.light;
   const navigation = useNavigation();
   const { addReading } = useReadingsContext();
+  const { preferences } = usePreferencesContext();
 
   const [selectedType, setSelectedType] = useState<ReadingType>("glucose");
   const [value, setValue] = useState("");
@@ -46,7 +53,7 @@ export default function AddReadingScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const config = READING_CONFIG[selectedType];
+  const unitLabel = displayUnitFor(selectedType, preferences.units);
 
   const toggleTag = (tag: ReadingTag) => {
     Haptics.selectionAsync();
@@ -125,7 +132,12 @@ export default function AddReadingScreen() {
 
     setIsSaving(true);
     try {
-      await addReading(selectedType, numValue, {
+      const canonicalValue = toCanonicalValue(
+        selectedType,
+        numValue,
+        preferences.units,
+      );
+      await addReading(selectedType, canonicalValue, {
         notes: notes.trim() || undefined,
         isFasting,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
@@ -207,7 +219,7 @@ export default function AddReadingScreen() {
           style={[styles.unitBadge, { backgroundColor: colors.primary + "1A" }]}
         >
           <ThemedText style={[styles.unitText, { color: colors.primary }]}>
-            {config.defaultUnit}
+            {unitLabel}
           </ThemedText>
         </View>
       </View>
@@ -215,8 +227,7 @@ export default function AddReadingScreen() {
       <View style={styles.rangeInfo}>
         <Feather name="info" size={14} color={theme.textSecondary} />
         <ThemedText style={[styles.rangeText, { color: theme.textSecondary }]}>
-          Normal range: {config.normalRange.min} - {config.normalRange.max}{" "}
-          {config.defaultUnit}
+          Normal range: {formatNormalRange(selectedType, preferences.units)}
         </ThemedText>
       </View>
 
