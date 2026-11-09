@@ -4,7 +4,7 @@ import { Feather } from "@expo/vector-icons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import { Spacing, Colors } from "@/constants/theme";
 
 interface AvatarSelectorProps {
   selectedIndex: number;
@@ -19,8 +19,12 @@ const AVATARS = [
   { icon: "shield" as const, color: "#8B5CF6" },
 ];
 
-export function AvatarSelector({ selectedIndex, onSelect, displayName }: AvatarSelectorProps) {
-  const { theme, isDark } = useTheme();
+export function AvatarSelector({
+  selectedIndex,
+  onSelect,
+  displayName,
+}: AvatarSelectorProps) {
+  const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const selectedAvatar = AVATARS[selectedIndex] || AVATARS[0];
 
@@ -48,7 +52,8 @@ export function AvatarSelector({ selectedIndex, onSelect, displayName }: AvatarS
               styles.avatarOption,
               {
                 backgroundColor: avatar.color + "20",
-                borderColor: index === selectedIndex ? colors.primary : "transparent",
+                borderColor:
+                  index === selectedIndex ? colors.primary : "transparent",
                 opacity: pressed ? 0.7 : 1,
               },
             ]}

@@ -6,7 +6,15 @@ import { Typography } from "@/constants/theme";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
-  type?: "readingDisplay" | "h1" | "h2" | "h3" | "body" | "caption" | "small" | "link";
+  type?:
+    | "readingDisplay"
+    | "h1"
+    | "h2"
+    | "h3"
+    | "body"
+    | "caption"
+    | "small"
+    | "link";
 };
 
 export function ThemedText({

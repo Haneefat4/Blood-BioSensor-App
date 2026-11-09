@@ -13,7 +13,12 @@ interface ComparisonChartProps {
   readings: Reading[];
 }
 
-const READING_TYPES: ReadingType[] = ["glucose", "hemoglobin", "cholesterol", "platelets"];
+const READING_TYPES: ReadingType[] = [
+  "glucose",
+  "hemoglobin",
+  "cholesterol",
+  "platelets",
+];
 const TYPE_COLORS: Record<ReadingType, string> = {
   glucose: "#3B82F6",
   hemoglobin: "#EF4444",
@@ -28,7 +33,10 @@ const CHART_PADDING = 40;
 export function ComparisonChart({ readings }: ComparisonChartProps) {
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>(["glucose", "hemoglobin"]);
+  const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>([
+    "glucose",
+    "hemoglobin",
+  ]);
 
   const toggleType = (type: ReadingType) => {
     Haptics.selectionAsync();
@@ -71,10 +79,13 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
 
       READING_TYPES.forEach((type) => {
         const dayReadings = readings.filter(
-          (r) => r.type === type && r.timestamp >= dayStart && r.timestamp < dayEnd
+          (r) =>
+            r.type === type && r.timestamp >= dayStart && r.timestamp < dayEnd,
         );
         if (dayReadings.length > 0) {
-          const avg = dayReadings.reduce((sum, r) => sum + r.value, 0) / dayReadings.length;
+          const avg =
+            dayReadings.reduce((sum, r) => sum + r.value, 0) /
+            dayReadings.length;
           dataByType[type].push(avg);
           minMax[type].min = Math.min(minMax[type].min, avg);
           minMax[type].max = Math.max(minMax[type].max, avg);
@@ -99,7 +110,8 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
     data.forEach((value, i) => {
       if (value !== null) {
         const x = i * stepX;
-        const y = CHART_HEIGHT - ((value - min) / range) * (CHART_HEIGHT - 20) - 10;
+        const y =
+          CHART_HEIGHT - ((value - min) / range) * (CHART_HEIGHT - 20) - 10;
         points.push({ x, y });
       }
     });
@@ -163,7 +175,9 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundDefault }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
+    >
       <View style={styles.header}>
         <Feather name="bar-chart-2" size={18} color={colors.primary} />
         <ThemedText style={styles.title}>Compare Biomarkers</ThemedText>
@@ -180,8 +194,12 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
               style={[
                 styles.typeChip,
                 {
-                  backgroundColor: isSelected ? TYPE_COLORS[type] : theme.backgroundDefault,
-                  borderColor: isSelected ? TYPE_COLORS[type] : theme.textSecondary + "40",
+                  backgroundColor: isSelected
+                    ? TYPE_COLORS[type]
+                    : theme.backgroundDefault,
+                  borderColor: isSelected
+                    ? TYPE_COLORS[type]
+                    : theme.textSecondary + "40",
                 },
               ]}
             >
@@ -204,8 +222,13 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
         </View>
         <View style={styles.xLabels}>
           {chartData.days.map((day, i) => (
-            <ThemedText key={i} style={[styles.xLabel, { color: theme.textSecondary }]}>
-              {day.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 2)}
+            <ThemedText
+              key={i}
+              style={[styles.xLabel, { color: theme.textSecondary }]}
+            >
+              {day
+                .toLocaleDateString(undefined, { weekday: "short" })
+                .slice(0, 2)}
             </ThemedText>
           ))}
         </View>
@@ -213,7 +236,9 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
 
       {readings.filter((r) => selectedTypes.includes(r.type)).length === 0 ? (
         <View style={styles.noDataContainer}>
-          <ThemedText style={[styles.noDataText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.noDataText, { color: theme.textSecondary }]}
+          >
             No data for selected biomarkers in the last 7 days
           </ThemedText>
         </View>

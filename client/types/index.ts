@@ -1,8 +1,19 @@
-export type ReadingType = "glucose" | "hemoglobin" | "cholesterol" | "platelets";
+export type ReadingType =
+  | "glucose"
+  | "hemoglobin"
+  | "cholesterol"
+  | "platelets";
 
 export type ReadingStatus = "normal" | "warning" | "critical";
 
-export type ReadingTag = "fasting" | "after_meal" | "before_meal" | "exercise" | "medication" | "morning" | "evening";
+export type ReadingTag =
+  | "fasting"
+  | "after_meal"
+  | "before_meal"
+  | "exercise"
+  | "medication"
+  | "morning"
+  | "evening";
 
 export const READING_TAGS: { id: ReadingTag; label: string; icon: string }[] = [
   { id: "fasting", label: "Fasting", icon: "clock" },
@@ -92,7 +103,10 @@ export const READING_CONFIG: Record<
   },
 };
 
-export function getReadingStatus(type: ReadingType, value: number): ReadingStatus {
+export function getReadingStatus(
+  type: ReadingType,
+  value: number,
+): ReadingStatus {
   const config = READING_CONFIG[type];
   if (value >= config.normalRange.min && value <= config.normalRange.max) {
     return "normal";

@@ -22,7 +22,11 @@ interface ReadingListItemProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemProps) {
+export function ReadingListItem({
+  reading,
+  onPress,
+  onDelete,
+}: ReadingListItemProps) {
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[reading.type];
@@ -40,12 +44,15 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
     scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
-  const formattedDate = new Date(reading.timestamp).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = new Date(reading.timestamp).toLocaleDateString(
+    undefined,
+    {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
 
   const tagLabels = reading.tags?.map((tagId) => {
     const tag = READING_TAGS.find((t) => t.id === tagId);
@@ -63,7 +70,12 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
         animatedStyle,
       ]}
     >
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary + "1A" }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: colors.primary + "1A" },
+        ]}
+      >
         <Feather name={config.icon as any} size={20} color={colors.primary} />
       </View>
       <View style={styles.content}>
@@ -71,9 +83,16 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
           <View style={styles.titleRow}>
             <ThemedText style={styles.type}>{config.label}</ThemedText>
             {reading.isFasting ? (
-              <View style={[styles.fastingBadge, { backgroundColor: colors.warning + "20" }]}>
+              <View
+                style={[
+                  styles.fastingBadge,
+                  { backgroundColor: colors.warning + "20" },
+                ]}
+              >
                 <Feather name="clock" size={10} color={colors.warning} />
-                <ThemedText style={[styles.fastingText, { color: colors.warning }]}>
+                <ThemedText
+                  style={[styles.fastingText, { color: colors.warning }]}
+                >
                   Fasting
                 </ThemedText>
               </View>
@@ -97,7 +116,10 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
             {tagLabels.map((label, index) => (
               <View
                 key={index}
-                style={[styles.tagChip, { backgroundColor: colors.primary + "15" }]}
+                style={[
+                  styles.tagChip,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
               >
                 <ThemedText style={[styles.tagText, { color: colors.primary }]}>
                   {label}

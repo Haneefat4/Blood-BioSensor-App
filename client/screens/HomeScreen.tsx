@@ -19,7 +19,12 @@ import type { ReadingType } from "@/types";
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const READING_TYPES: ReadingType[] = ["glucose", "hemoglobin", "cholesterol", "platelets"];
+const READING_TYPES: ReadingType[] = [
+  "glucose",
+  "hemoglobin",
+  "cholesterol",
+  "platelets",
+];
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();

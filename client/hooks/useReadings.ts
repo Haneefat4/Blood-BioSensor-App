@@ -49,7 +49,7 @@ export function useReadings() {
       setReadings((prev) => [newReading, ...prev]);
       return newReading;
     },
-    []
+    [],
   );
 
   const removeReading = useCallback(async (id: string) => {
@@ -61,7 +61,7 @@ export function useReadings() {
     (type: ReadingType): Reading | undefined => {
       return readings.find((r) => r.type === type);
     },
-    [readings]
+    [readings],
   );
 
   const getLatestReading = useCallback((): Reading | undefined => {

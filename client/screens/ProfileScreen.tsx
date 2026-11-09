@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Alert, Share, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Alert,
+  Share,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -31,7 +38,11 @@ export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { preferences, updatePreferences, refresh: refreshPreferences } = usePreferencesContext();
+  const {
+    preferences,
+    updatePreferences,
+    refresh: refreshPreferences,
+  } = usePreferencesContext();
   const { readings, refresh: refreshReadings } = useReadingsContext();
   const { refresh: refreshMedications } = useMedicationsContext();
   const [editingName, setEditingName] = useState(false);
@@ -59,10 +70,23 @@ export default function ProfileScreen() {
 
     setIsExporting(true);
     try {
-      const headers = ["Date", "Time", "Type", "Value", "Unit", "Status", "Fasting", "Tags", "Notes"];
+      const headers = [
+        "Date",
+        "Time",
+        "Type",
+        "Value",
+        "Unit",
+        "Status",
+        "Fasting",
+        "Tags",
+        "Notes",
+      ];
       const rows = readings.map((r) => {
         const date = new Date(r.timestamp);
-        const tags = r.tags?.map((t) => READING_TAGS.find((tag) => tag.id === t)?.label || t).join("; ") || "";
+        const tags =
+          r.tags
+            ?.map((t) => READING_TAGS.find((tag) => tag.id === t)?.label || t)
+            .join("; ") || "";
         return [
           date.toLocaleDateString(),
           date.toLocaleTimeString(),
@@ -73,7 +97,9 @@ export default function ProfileScreen() {
           r.isFasting ? "Yes" : "No",
           tags,
           r.notes || "",
-        ].map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",");
+        ]
+          .map((cell) => `"${cell.replace(/"/g, '""')}"`)
+          .join(",");
       });
       const csv = [headers.join(","), ...rows].join("\n");
 
@@ -91,7 +117,7 @@ export default function ProfileScreen() {
           title: "Blood Biosensor Export",
         });
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to export data.");
     } finally {
       setIsExporting(false);
@@ -142,7 +168,9 @@ export default function ProfileScreen() {
               <th>Fasting</th>
               <th>Notes</th>
             </tr>
-            ${readings.map((r) => `
+            ${readings
+              .map(
+                (r) => `
               <tr>
                 <td>${new Date(r.timestamp).toLocaleDateString()} ${new Date(r.timestamp).toLocaleTimeString()}</td>
                 <td>${READING_CONFIG[r.type].label}</td>
@@ -151,7 +179,9 @@ export default function ProfileScreen() {
                 <td>${r.isFasting ? '<span class="fasting">Fasting</span>' : "-"}</td>
                 <td>${r.notes || "-"}</td>
               </tr>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </table>
         </body>
         </html>
@@ -167,7 +197,7 @@ export default function ProfileScreen() {
       } else {
         Alert.alert("Success", "PDF saved to: " + uri);
       }
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to generate PDF.");
     } finally {
       setIsExporting(false);
@@ -186,14 +216,18 @@ export default function ProfileScreen() {
           onPress: async () => {
             try {
               await clearAllData();
-              await Promise.all([refreshPreferences(), refreshReadings(), refreshMedications()]);
+              await Promise.all([
+                refreshPreferences(),
+                refreshReadings(),
+                refreshMedications(),
+              ]);
               Alert.alert("Success", "All data has been cleared.");
-            } catch (error) {
+            } catch {
               Alert.alert("Error", "Failed to clear data. Please try again.");
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -213,7 +247,9 @@ export default function ProfileScreen() {
         displayName={preferences.displayName}
       />
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <ThemedText style={styles.sectionTitle}>Profile</ThemedText>
         {editingName ? (
           <View style={styles.nameInputContainer}>
@@ -247,7 +283,9 @@ export default function ProfileScreen() {
         )}
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <ThemedText style={styles.sectionTitle}>Health Tracking</ThemedText>
         <SettingsRow
           icon="plus-circle"
@@ -262,7 +300,9 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <ThemedText style={styles.sectionTitle}>Export Data</ThemedText>
         <SettingsRow
           icon="file-text"
@@ -279,7 +319,9 @@ export default function ProfileScreen() {
         />
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <ThemedText style={styles.sectionTitle}>Preferences</ThemedText>
         <SettingsRow
           icon="droplet"
@@ -296,11 +338,15 @@ export default function ProfileScreen() {
           label="Notifications"
           isSwitch
           switchValue={preferences.notificationsEnabled}
-          onSwitchChange={(value) => updatePreferences({ notificationsEnabled: value })}
+          onSwitchChange={(value) =>
+            updatePreferences({ notificationsEnabled: value })
+          }
         />
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <ThemedText style={styles.sectionTitle}>About</ThemedText>
         <SettingsRow
           icon="info"
@@ -309,11 +355,7 @@ export default function ProfileScreen() {
           showChevron={false}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingsRow
-          icon="shield"
-          label="Privacy Policy"
-          onPress={() => {}}
-        />
+        <SettingsRow icon="shield" label="Privacy Policy" onPress={() => {}} />
       </View>
 
       <View style={styles.dangerSection}>

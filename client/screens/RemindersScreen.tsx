@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, TextInput, Pressable, Alert, Platform, Switch } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Alert,
+  Platform,
+  Switch,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { Feather } from "@expo/vector-icons";
@@ -15,7 +23,12 @@ import { usePreferencesContext } from "@/context/PreferencesContext";
 import type { ReadingType } from "@/types";
 import { READING_CONFIG } from "@/types";
 
-const READING_TYPES: ReadingType[] = ["glucose", "hemoglobin", "cholesterol", "platelets"];
+const READING_TYPES: ReadingType[] = [
+  "glucose",
+  "hemoglobin",
+  "cholesterol",
+  "platelets",
+];
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -35,10 +48,14 @@ export default function RemindersScreen() {
   const { preferences, updatePreferences } = usePreferencesContext();
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [enabled, setEnabled] = useState(preferences.reminderSettings?.enabled || false);
-  const [times, setTimes] = useState<string[]>(preferences.reminderSettings?.times || ["09:00", "21:00"]);
+  const [enabled, setEnabled] = useState(
+    preferences.reminderSettings?.enabled || false,
+  );
+  const [times, setTimes] = useState<string[]>(
+    preferences.reminderSettings?.times || ["09:00", "21:00"],
+  );
   const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>(
-    preferences.reminderSettings?.types || ["glucose"]
+    preferences.reminderSettings?.types || ["glucose"],
   );
   const [newTime, setNewTime] = useState("");
 
@@ -57,7 +74,10 @@ export default function RemindersScreen() {
 
   const requestPermission = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Not Available", "Push notifications require Expo Go. Run this app on your device to use this feature.");
+      Alert.alert(
+        "Not Available",
+        "Push notifications require Expo Go. Run this app on your device to use this feature.",
+      );
       return;
     }
     const { status } = await Notifications.requestPermissionsAsync();
@@ -81,7 +101,10 @@ export default function RemindersScreen() {
   const addTime = () => {
     const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
     if (!timeRegex.test(newTime)) {
-      Alert.alert("Invalid Time", "Please enter time in HH:MM format (e.g., 09:00 or 21:30).");
+      Alert.alert(
+        "Invalid Time",
+        "Please enter time in HH:MM format (e.g., 09:00 or 21:30).",
+      );
       return;
     }
     if (times.includes(newTime)) {
@@ -129,7 +152,9 @@ export default function RemindersScreen() {
 
     for (const time of times) {
       const [hours, minutes] = time.split(":").map(Number);
-      const typeLabels = selectedTypes.map((t) => READING_CONFIG[t].label).join(", ");
+      const typeLabels = selectedTypes
+        .map((t) => READING_CONFIG[t].label)
+        .join(", ");
 
       await Notifications.scheduleNotificationAsync({
         content: {
@@ -156,7 +181,9 @@ export default function RemindersScreen() {
       }}
     >
       {Platform.OS === "web" ? (
-        <View style={[styles.webNotice, { backgroundColor: colors.warning + "20" }]}>
+        <View
+          style={[styles.webNotice, { backgroundColor: colors.warning + "20" }]}
+        >
           <Feather name="alert-circle" size={20} color={colors.warning} />
           <ThemedText style={[styles.webNoticeText, { color: colors.warning }]}>
             Push notifications require Expo Go on your mobile device.
@@ -164,7 +191,9 @@ export default function RemindersScreen() {
         </View>
       ) : null}
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
         <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle}>Enable Reminders</ThemedText>
           <Switch
@@ -184,18 +213,36 @@ export default function RemindersScreen() {
             style={[styles.permissionBtn, { backgroundColor: colors.primary }]}
           >
             <Feather name="bell" size={16} color="#FFFFFF" />
-            <ThemedText style={styles.permissionBtnText}>Allow Notifications</ThemedText>
+            <ThemedText style={styles.permissionBtnText}>
+              Allow Notifications
+            </ThemedText>
           </Pressable>
         ) : null}
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault, opacity: enabled ? 1 : 0.5 }]}>
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: theme.backgroundDefault,
+            opacity: enabled ? 1 : 0.5,
+          },
+        ]}
+      >
         <ThemedText style={styles.sectionTitle}>Reminder Times</ThemedText>
         <View style={styles.timesContainer}>
           {times.map((time) => (
-            <View key={time} style={[styles.timeChip, { backgroundColor: colors.primary + "20" }]}>
+            <View
+              key={time}
+              style={[
+                styles.timeChip,
+                { backgroundColor: colors.primary + "20" },
+              ]}
+            >
               <Feather name="clock" size={14} color={colors.primary} />
-              <ThemedText style={[styles.timeText, { color: colors.primary }]}>{time}</ThemedText>
+              <ThemedText style={[styles.timeText, { color: colors.primary }]}>
+                {time}
+              </ThemedText>
               <Pressable onPress={() => removeTime(time)} hitSlop={8}>
                 <Feather name="x" size={14} color={colors.primary} />
               </Pressable>
@@ -209,7 +256,10 @@ export default function RemindersScreen() {
             placeholder="HH:MM"
             placeholderTextColor={theme.textSecondary}
             keyboardType="numbers-and-punctuation"
-            style={[styles.timeInput, { backgroundColor: theme.backgroundSecondary, color: theme.text }]}
+            style={[
+              styles.timeInput,
+              { backgroundColor: theme.backgroundSecondary, color: theme.text },
+            ]}
           />
           <Pressable
             onPress={addTime}
@@ -223,8 +273,18 @@ export default function RemindersScreen() {
         </View>
       </View>
 
-      <View style={[styles.section, { backgroundColor: theme.backgroundDefault, opacity: enabled ? 1 : 0.5 }]}>
-        <ThemedText style={styles.sectionTitle}>Reading Types to Remind</ThemedText>
+      <View
+        style={[
+          styles.section,
+          {
+            backgroundColor: theme.backgroundDefault,
+            opacity: enabled ? 1 : 0.5,
+          },
+        ]}
+      >
+        <ThemedText style={styles.sectionTitle}>
+          Reading Types to Remind
+        </ThemedText>
         <View style={styles.typesGrid}>
           {READING_TYPES.map((type) => {
             const isSelected = selectedTypes.includes(type);
@@ -236,7 +296,9 @@ export default function RemindersScreen() {
                 style={[
                   styles.typeChip,
                   {
-                    backgroundColor: isSelected ? colors.primary : theme.backgroundSecondary,
+                    backgroundColor: isSelected
+                      ? colors.primary
+                      : theme.backgroundSecondary,
                   },
                 ]}
               >
@@ -245,7 +307,12 @@ export default function RemindersScreen() {
                   size={16}
                   color={isSelected ? "#FFFFFF" : theme.text}
                 />
-                <ThemedText style={{ color: isSelected ? "#FFFFFF" : theme.text, fontWeight: "500" }}>
+                <ThemedText
+                  style={{
+                    color: isSelected ? "#FFFFFF" : theme.text,
+                    fontWeight: "500",
+                  }}
+                >
                   {READING_CONFIG[type].label}
                 </ThemedText>
               </Pressable>

@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Pressable, Alert, Switch, Platform } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Alert,
+  Switch,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
@@ -16,7 +24,12 @@ import { useReadingsContext } from "@/context/ReadingsContext";
 import type { ReadingType, ReadingTag } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
-const READING_TYPES: ReadingType[] = ["glucose", "hemoglobin", "cholesterol", "platelets"];
+const READING_TYPES: ReadingType[] = [
+  "glucose",
+  "hemoglobin",
+  "cholesterol",
+  "platelets",
+];
 
 export default function AddReadingScreen() {
   const insets = useSafeAreaInsets();
@@ -38,19 +51,25 @@ export default function AddReadingScreen() {
   const toggleTag = (tag: ReadingTag) => {
     Haptics.selectionAsync();
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
   const handlePickImage = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Not Available", "Photo attachments require Expo Go. Run this app on your device to use this feature.");
+      Alert.alert(
+        "Not Available",
+        "Photo attachments require Expo Go. Run this app on your device to use this feature.",
+      );
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow access to your photo library to attach images.");
+      Alert.alert(
+        "Permission Required",
+        "Please allow access to your photo library to attach images.",
+      );
       return;
     }
 
@@ -69,13 +88,19 @@ export default function AddReadingScreen() {
 
   const handleTakePhoto = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Not Available", "Camera requires Expo Go. Run this app on your device to use this feature.");
+      Alert.alert(
+        "Not Available",
+        "Camera requires Expo Go. Run this app on your device to use this feature.",
+      );
       return;
     }
 
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Please allow camera access to take photos.");
+      Alert.alert(
+        "Permission Required",
+        "Please allow camera access to take photos.",
+      );
       return;
     }
 
@@ -108,7 +133,7 @@ export default function AddReadingScreen() {
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to save reading. Please try again.");
     } finally {
       setIsSaving(false);
@@ -179,10 +204,7 @@ export default function AddReadingScreen() {
           ]}
         />
         <View
-          style={[
-            styles.unitBadge,
-            { backgroundColor: colors.primary + "1A" },
-          ]}
+          style={[styles.unitBadge, { backgroundColor: colors.primary + "1A" }]}
         >
           <ThemedText style={[styles.unitText, { color: colors.primary }]}>
             {config.defaultUnit}
@@ -193,11 +215,17 @@ export default function AddReadingScreen() {
       <View style={styles.rangeInfo}>
         <Feather name="info" size={14} color={theme.textSecondary} />
         <ThemedText style={[styles.rangeText, { color: theme.textSecondary }]}>
-          Normal range: {config.normalRange.min} - {config.normalRange.max} {config.defaultUnit}
+          Normal range: {config.normalRange.min} - {config.normalRange.max}{" "}
+          {config.defaultUnit}
         </ThemedText>
       </View>
 
-      <View style={[styles.fastingRow, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[
+          styles.fastingRow,
+          { backgroundColor: theme.backgroundDefault },
+        ]}
+      >
         <View style={styles.fastingLabel}>
           <Feather name="clock" size={20} color={colors.primary} />
           <ThemedText style={styles.fastingText}>Fasting Reading</ThemedText>
@@ -252,7 +280,11 @@ export default function AddReadingScreen() {
       <ThemedText style={styles.label}>Photo Attachment (Optional)</ThemedText>
       {photoUri ? (
         <View style={styles.photoContainer}>
-          <Image source={{ uri: photoUri }} style={styles.photoPreview} contentFit="cover" />
+          <Image
+            source={{ uri: photoUri }}
+            style={styles.photoPreview}
+            contentFit="cover"
+          />
           <Pressable
             onPress={() => setPhotoUri(null)}
             style={[styles.removePhotoBtn, { backgroundColor: colors.error }]}
@@ -266,21 +298,31 @@ export default function AddReadingScreen() {
             onPress={handlePickImage}
             style={({ pressed }) => [
               styles.photoBtn,
-              { backgroundColor: theme.backgroundDefault, opacity: pressed ? 0.7 : 1 },
+              {
+                backgroundColor: theme.backgroundDefault,
+                opacity: pressed ? 0.7 : 1,
+              },
             ]}
           >
             <Feather name="image" size={20} color={colors.primary} />
-            <ThemedText style={[styles.photoBtnText, { color: theme.text }]}>Gallery</ThemedText>
+            <ThemedText style={[styles.photoBtnText, { color: theme.text }]}>
+              Gallery
+            </ThemedText>
           </Pressable>
           <Pressable
             onPress={handleTakePhoto}
             style={({ pressed }) => [
               styles.photoBtn,
-              { backgroundColor: theme.backgroundDefault, opacity: pressed ? 0.7 : 1 },
+              {
+                backgroundColor: theme.backgroundDefault,
+                opacity: pressed ? 0.7 : 1,
+              },
             ]}
           >
             <Feather name="camera" size={20} color={colors.primary} />
-            <ThemedText style={[styles.photoBtnText, { color: theme.text }]}>Camera</ThemedText>
+            <ThemedText style={[styles.photoBtnText, { color: theme.text }]}>
+              Camera
+            </ThemedText>
           </Pressable>
         </View>
       )}

@@ -52,10 +52,17 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
       ]}
     >
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.primary + "1A" }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: colors.primary + "1A" },
+          ]}
+        >
           <Feather name={config.icon as any} size={16} color={colors.primary} />
         </View>
-        {reading ? <StatusBadge status={reading.status} showLabel={false} /> : null}
+        {reading ? (
+          <StatusBadge status={reading.status} showLabel={false} />
+        ) : null}
       </View>
       <ThemedText style={[styles.label, { color: theme.textSecondary }]}>
         {config.label}

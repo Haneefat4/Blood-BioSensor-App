@@ -14,7 +14,7 @@ interface HeroCardProps {
 }
 
 export function HeroCard({ reading }: HeroCardProps) {
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
 
   if (!reading) {
