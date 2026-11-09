@@ -1,6 +1,12 @@
 import React, { useState } from "react";
-import { View, StyleSheet, TextInput, Pressable, Alert, FlatList } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Alert,
+  FlatList,
+} from "react-native";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
@@ -15,15 +21,21 @@ import { EmptyState } from "@/components/EmptyState";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import type { Medication } from "@/types";
 
-const FREQUENCIES = ["Once daily", "Twice daily", "Three times daily", "As needed", "Weekly"];
+const FREQUENCIES = [
+  "Once daily",
+  "Twice daily",
+  "Three times daily",
+  "As needed",
+  "Weekly",
+];
 
 export default function MedicationsScreen() {
-  const insets = useSafeAreaInsets();
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { medications, addMedication, removeMedication, isLoading } = useMedicationsContext();
+  const { medications, addMedication, removeMedication } =
+    useMedicationsContext();
 
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
@@ -35,16 +47,25 @@ export default function MedicationsScreen() {
 
   const handleAdd = async () => {
     if (!name.trim() || !dosage.trim()) {
-      Alert.alert("Required Fields", "Please enter medication name and dosage.");
+      Alert.alert(
+        "Required Fields",
+        "Please enter medication name and dosage.",
+      );
       return;
     }
 
     setIsSaving(true);
     try {
-      await addMedication(name.trim(), dosage.trim(), frequency, time.trim() || undefined, notes.trim() || undefined);
+      await addMedication(
+        name.trim(),
+        dosage.trim(),
+        frequency,
+        time.trim() || undefined,
+        notes.trim() || undefined,
+      );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       resetForm();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to save medication.");
     } finally {
       setIsSaving(false);
@@ -74,13 +95,17 @@ export default function MedicationsScreen() {
             await removeMedication(med.id);
           },
         },
-      ]
+      ],
     );
   };
 
   const renderMedication = ({ item }: { item: Medication }) => (
-    <View style={[styles.medCard, { backgroundColor: theme.backgroundDefault }]}>
-      <View style={[styles.medIcon, { backgroundColor: colors.primary + "1A" }]}>
+    <View
+      style={[styles.medCard, { backgroundColor: theme.backgroundDefault }]}
+    >
+      <View
+        style={[styles.medIcon, { backgroundColor: colors.primary + "1A" }]}
+      >
         <Feather name="plus-circle" size={20} color={colors.primary} />
       </View>
       <View style={styles.medContent}>
@@ -94,7 +119,10 @@ export default function MedicationsScreen() {
           </ThemedText>
         ) : null}
         {item.notes ? (
-          <ThemedText style={[styles.medNotes, { color: theme.textSecondary }]} numberOfLines={1}>
+          <ThemedText
+            style={[styles.medNotes, { color: theme.textSecondary }]}
+            numberOfLines={1}
+          >
             {item.notes}
           </ThemedText>
         ) : null}
@@ -102,7 +130,10 @@ export default function MedicationsScreen() {
       <Pressable
         onPress={() => handleDelete(item)}
         hitSlop={8}
-        style={({ pressed }) => [styles.deleteBtn, { opacity: pressed ? 0.7 : 1 }]}
+        style={({ pressed }) => [
+          styles.deleteBtn,
+          { opacity: pressed ? 0.7 : 1 },
+        ]}
       >
         <Feather name="trash-2" size={18} color={colors.error} />
       </Pressable>
@@ -127,7 +158,10 @@ export default function MedicationsScreen() {
           onChangeText={setName}
           placeholder="e.g., Metformin"
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text }]}
+          style={[
+            styles.input,
+            { backgroundColor: theme.backgroundDefault, color: theme.text },
+          ]}
         />
 
         <ThemedText style={styles.label}>Dosage</ThemedText>
@@ -136,7 +170,10 @@ export default function MedicationsScreen() {
           onChangeText={setDosage}
           placeholder="e.g., 500mg"
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text }]}
+          style={[
+            styles.input,
+            { backgroundColor: theme.backgroundDefault, color: theme.text },
+          ]}
         />
 
         <ThemedText style={styles.label}>Frequency</ThemedText>
@@ -148,12 +185,18 @@ export default function MedicationsScreen() {
               style={[
                 styles.freqChip,
                 {
-                  backgroundColor: frequency === freq ? colors.primary : theme.backgroundDefault,
+                  backgroundColor:
+                    frequency === freq
+                      ? colors.primary
+                      : theme.backgroundDefault,
                 },
               ]}
             >
               <ThemedText
-                style={[styles.freqText, { color: frequency === freq ? "#FFFFFF" : theme.text }]}
+                style={[
+                  styles.freqText,
+                  { color: frequency === freq ? "#FFFFFF" : theme.text },
+                ]}
               >
                 {freq}
               </ThemedText>
@@ -167,7 +210,10 @@ export default function MedicationsScreen() {
           onChangeText={setTime}
           placeholder="e.g., 8:00 AM"
           placeholderTextColor={theme.textSecondary}
-          style={[styles.input, { backgroundColor: theme.backgroundDefault, color: theme.text }]}
+          style={[
+            styles.input,
+            { backgroundColor: theme.backgroundDefault, color: theme.text },
+          ]}
         />
 
         <ThemedText style={styles.label}>Notes (Optional)</ThemedText>
@@ -178,13 +224,19 @@ export default function MedicationsScreen() {
           placeholderTextColor={theme.textSecondary}
           multiline
           numberOfLines={2}
-          style={[styles.notesInput, { backgroundColor: theme.backgroundDefault, color: theme.text }]}
+          style={[
+            styles.notesInput,
+            { backgroundColor: theme.backgroundDefault, color: theme.text },
+          ]}
         />
 
         <View style={styles.buttonRow}>
           <Pressable
             onPress={resetForm}
-            style={[styles.cancelBtn, { backgroundColor: theme.backgroundDefault }]}
+            style={[
+              styles.cancelBtn,
+              { backgroundColor: theme.backgroundDefault },
+            ]}
           >
             <ThemedText style={{ color: theme.text }}>Cancel</ThemedText>
           </Pressable>

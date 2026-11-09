@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors, Typography } from "@/constants/theme";
 import type { Reading } from "@/types";
 import { READING_CONFIG } from "@/types";
@@ -14,7 +15,8 @@ interface HeroCardProps {
 }
 
 export function HeroCard({ reading }: HeroCardProps) {
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
+  const { valueText, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
 
   if (!reading) {
@@ -46,8 +48,8 @@ export function HeroCard({ reading }: HeroCardProps) {
         <StatusBadge status={reading.status} />
       </View>
       <View style={styles.valueSection}>
-        <ThemedText style={styles.value}>{reading.value}</ThemedText>
-        <ThemedText style={styles.unit}>{reading.unit}</ThemedText>
+        <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
+        <ThemedText style={styles.unit}>{unitText(reading.type)}</ThemedText>
       </View>
       <ThemedText style={styles.timestamp}>{timeAgo}</ThemedText>
     </View>

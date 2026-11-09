@@ -4,7 +4,9 @@ import { DEFAULT_USER_PREFERENCES } from "@/types";
 import { getUserPreferences, saveUserPreferences } from "@/lib/storage";
 
 export function usePreferences() {
-  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_USER_PREFERENCES);
+  const [preferences, setPreferences] = useState<UserPreferences>(
+    DEFAULT_USER_PREFERENCES,
+  );
   const [isLoading, setIsLoading] = useState(true);
 
   const loadPreferences = useCallback(async () => {
@@ -29,7 +31,7 @@ export function usePreferences() {
       setPreferences(newPreferences);
       await saveUserPreferences(newPreferences);
     },
-    [preferences]
+    [preferences],
   );
 
   const refresh = useCallback(async () => {

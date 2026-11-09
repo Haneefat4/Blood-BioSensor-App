@@ -10,6 +10,7 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading } from "@/types";
 import { READING_CONFIG } from "@/types";
@@ -24,6 +25,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
   const { theme, isDark } = useTheme();
+  const { valueText, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[type];
   const scale = useSharedValue(1);
@@ -52,19 +54,26 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
       ]}
     >
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: colors.primary + "1A" }]}>
+        <View
+          style={[
+            styles.iconContainer,
+            { backgroundColor: colors.primary + "1A" },
+          ]}
+        >
           <Feather name={config.icon as any} size={16} color={colors.primary} />
         </View>
-        {reading ? <StatusBadge status={reading.status} showLabel={false} /> : null}
+        {reading ? (
+          <StatusBadge status={reading.status} showLabel={false} />
+        ) : null}
       </View>
       <ThemedText style={[styles.label, { color: theme.textSecondary }]}>
         {config.label}
       </ThemedText>
       {reading ? (
         <View style={styles.valueRow}>
-          <ThemedText style={styles.value}>{reading.value}</ThemedText>
+          <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
           <ThemedText style={[styles.unit, { color: theme.textSecondary }]}>
-            {reading.unit}
+            {unitText(type)}
           </ThemedText>
         </View>
       ) : (

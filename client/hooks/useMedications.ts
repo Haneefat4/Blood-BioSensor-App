@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Medication } from "@/types";
-import { getMedications, saveMedication, updateMedication, deleteMedication } from "@/lib/storage";
+import {
+  getMedications,
+  saveMedication,
+  updateMedication,
+  deleteMedication,
+} from "@/lib/storage";
 
 export function useMedications() {
   const [medications, setMedications] = useState<Medication[]>([]);
@@ -23,7 +28,13 @@ export function useMedications() {
   }, [loadMedications]);
 
   const addMedication = useCallback(
-    async (name: string, dosage: string, frequency: string, time?: string, notes?: string) => {
+    async (
+      name: string,
+      dosage: string,
+      frequency: string,
+      time?: string,
+      notes?: string,
+    ) => {
       const newMedication: Medication = {
         id: Date.now().toString(),
         name,
@@ -37,13 +48,13 @@ export function useMedications() {
       setMedications((prev) => [newMedication, ...prev]);
       return newMedication;
     },
-    []
+    [],
   );
 
   const editMedication = useCallback(async (medication: Medication) => {
     await updateMedication(medication);
     setMedications((prev) =>
-      prev.map((m) => (m.id === medication.id ? medication : m))
+      prev.map((m) => (m.id === medication.id ? medication : m)),
     );
   }, []);
 

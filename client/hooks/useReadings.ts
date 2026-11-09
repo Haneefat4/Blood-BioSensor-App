@@ -33,6 +33,7 @@ export function useReadings() {
   const addReading = useCallback(
     async (type: ReadingType, value: number, options?: AddReadingOptions) => {
       const config = READING_CONFIG[type];
+      // Callers pass the canonical unit. Status uses the unchanged ranges.
       const newReading: Reading = {
         id: Date.now().toString(),
         type,
@@ -49,7 +50,7 @@ export function useReadings() {
       setReadings((prev) => [newReading, ...prev]);
       return newReading;
     },
-    []
+    [],
   );
 
   const removeReading = useCallback(async (id: string) => {
@@ -61,7 +62,7 @@ export function useReadings() {
     (type: ReadingType): Reading | undefined => {
       return readings.find((r) => r.type === type);
     },
-    [readings]
+    [readings],
   );
 
   const getLatestReading = useCallback((): Reading | undefined => {

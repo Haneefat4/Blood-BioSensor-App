@@ -3,6 +3,8 @@ import { View, StyleSheet, Dimensions } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
+import { formatMeasurement } from "@/lib/units";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading, ReadingType } from "@/types";
 
@@ -17,7 +19,9 @@ const CHART_WIDTH = SCREEN_WIDTH - Spacing.lg * 4;
 
 export function TrendChart({ readings, type }: TrendChartProps) {
   const { theme, isDark } = useTheme();
+  const { units, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
+  const trendTitle = `7-Day Trend (${unitText(type)})`;
 
   const filteredReadings = readings
     .filter((r) => r.type === type)
@@ -26,10 +30,14 @@ export function TrendChart({ readings, type }: TrendChartProps) {
 
   if (filteredReadings.length < 2) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundDefault }]}>
-        <ThemedText style={styles.title}>7-Day Trend</ThemedText>
+      <View
+        style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
+      >
+        <ThemedText style={styles.title}>{trendTitle}</ThemedText>
         <View style={styles.emptyChart}>
-          <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+          <ThemedText
+            style={[styles.emptyText, { color: theme.textSecondary }]}
+          >
             Add more readings to see trends
           </ThemedText>
         </View>
@@ -49,20 +57,32 @@ export function TrendChart({ readings, type }: TrendChartProps) {
   }));
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundDefault }]}>
-      <ThemedText style={styles.title}>7-Day Trend</ThemedText>
+    <View
+      style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
+    >
+      <ThemedText style={styles.title}>{trendTitle}</ThemedText>
       <View style={styles.chartContainer}>
         <View style={styles.yAxis}>
-          <ThemedText style={[styles.axisLabel, { color: theme.textSecondary }]}>
-            {maxValue}
+          <ThemedText
+            style={[styles.axisLabel, { color: theme.textSecondary }]}
+          >
+            {formatMeasurement(type, maxValue, units)}
           </ThemedText>
-          <ThemedText style={[styles.axisLabel, { color: theme.textSecondary }]}>
-            {minValue}
+          <ThemedText
+            style={[styles.axisLabel, { color: theme.textSecondary }]}
+          >
+            {formatMeasurement(type, minValue, units)}
           </ThemedText>
         </View>
         <View style={styles.chart}>
           <View style={[styles.gridLine, { backgroundColor: theme.border }]} />
-          <View style={[styles.gridLine, styles.gridLineBottom, { backgroundColor: theme.border }]} />
+          <View
+            style={[
+              styles.gridLine,
+              styles.gridLineBottom,
+              { backgroundColor: theme.border },
+            ]}
+          />
           {points.map((point, index) => (
             <View
               key={index}

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Reading, UserPreferences, Medication } from "@/types";
 import { DEFAULT_USER_PREFERENCES } from "@/types";
+import { cancelScheduledReminders } from "@/lib/reminders";
 
 const READINGS_KEY = "@blood_biosensor_readings";
 const PREFERENCES_KEY = "@blood_biosensor_preferences";
@@ -41,14 +42,18 @@ export async function deleteReading(id: string): Promise<void> {
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     const data = await AsyncStorage.getItem(PREFERENCES_KEY);
-    return data ? { ...DEFAULT_USER_PREFERENCES, ...JSON.parse(data) } : DEFAULT_USER_PREFERENCES;
+    return data
+      ? { ...DEFAULT_USER_PREFERENCES, ...JSON.parse(data) }
+      : DEFAULT_USER_PREFERENCES;
   } catch (error) {
     console.error("Error loading preferences:", error);
     return DEFAULT_USER_PREFERENCES;
   }
 }
 
-export async function saveUserPreferences(preferences: UserPreferences): Promise<void> {
+export async function saveUserPreferences(
+  preferences: UserPreferences,
+): Promise<void> {
   try {
     await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
   } catch (error) {
@@ -105,7 +110,12 @@ export async function deleteMedication(id: string): Promise<void> {
 
 export async function clearAllData(): Promise<void> {
   try {
-    await AsyncStorage.multiRemove([READINGS_KEY, PREFERENCES_KEY, MEDICATIONS_KEY]);
+    await cancelScheduledReminders();
+    await AsyncStorage.multiRemove([
+      READINGS_KEY,
+      PREFERENCES_KEY,
+      MEDICATIONS_KEY,
+    ]);
   } catch (error) {
     console.error("Error clearing data:", error);
     throw error;

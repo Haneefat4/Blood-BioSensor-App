@@ -21,10 +21,16 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function usePreferencesContextOptional() {
+  return useContext(PreferencesContext);
+}
+
 export function usePreferencesContext() {
-  const context = useContext(PreferencesContext);
+  const context = usePreferencesContextOptional();
   if (!context) {
-    throw new Error("usePreferencesContext must be used within a PreferencesProvider");
+    throw new Error(
+      "usePreferencesContext must be used within a PreferencesProvider",
+    );
   }
   return context;
 }

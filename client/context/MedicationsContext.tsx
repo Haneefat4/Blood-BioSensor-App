@@ -5,7 +5,13 @@ import type { Medication } from "@/types";
 interface MedicationsContextType {
   medications: Medication[];
   isLoading: boolean;
-  addMedication: (name: string, dosage: string, frequency: string, time?: string, notes?: string) => Promise<Medication>;
+  addMedication: (
+    name: string,
+    dosage: string,
+    frequency: string,
+    time?: string,
+    notes?: string,
+  ) => Promise<Medication>;
   editMedication: (medication: Medication) => Promise<void>;
   removeMedication: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -26,7 +32,9 @@ export function MedicationsProvider({ children }: { children: ReactNode }) {
 export function useMedicationsContext() {
   const context = useContext(MedicationsContext);
   if (!context) {
-    throw new Error("useMedicationsContext must be used within a MedicationsProvider");
+    throw new Error(
+      "useMedicationsContext must be used within a MedicationsProvider",
+    );
   }
   return context;
 }

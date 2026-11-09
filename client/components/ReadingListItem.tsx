@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -10,6 +11,7 @@ import Animated, {
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
@@ -22,8 +24,13 @@ interface ReadingListItemProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemProps) {
+export function ReadingListItem({
+  reading,
+  onPress,
+  onDelete,
+}: ReadingListItemProps) {
   const { theme, isDark } = useTheme();
+  const { valueText, unitText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[reading.type];
   const scale = useSharedValue(1);
@@ -40,12 +47,15 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
     scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
-  const formattedDate = new Date(reading.timestamp).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const formattedDate = new Date(reading.timestamp).toLocaleDateString(
+    undefined,
+    {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
 
   const tagLabels = reading.tags?.map((tagId) => {
     const tag = READING_TAGS.find((t) => t.id === tagId);
@@ -63,7 +73,12 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
         animatedStyle,
       ]}
     >
-      <View style={[styles.iconContainer, { backgroundColor: colors.primary + "1A" }]}>
+      <View
+        style={[
+          styles.iconContainer,
+          { backgroundColor: colors.primary + "1A" },
+        ]}
+      >
         <Feather name={config.icon as any} size={20} color={colors.primary} />
       </View>
       <View style={styles.content}>
@@ -71,9 +86,16 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
           <View style={styles.titleRow}>
             <ThemedText style={styles.type}>{config.label}</ThemedText>
             {reading.isFasting ? (
-              <View style={[styles.fastingBadge, { backgroundColor: colors.warning + "20" }]}>
+              <View
+                style={[
+                  styles.fastingBadge,
+                  { backgroundColor: colors.warning + "20" },
+                ]}
+              >
                 <Feather name="clock" size={10} color={colors.warning} />
-                <ThemedText style={[styles.fastingText, { color: colors.warning }]}>
+                <ThemedText
+                  style={[styles.fastingText, { color: colors.warning }]}
+                >
                   Fasting
                 </ThemedText>
               </View>
@@ -83,9 +105,9 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
         </View>
         <View style={styles.bottomRow}>
           <View style={styles.valueContainer}>
-            <ThemedText style={styles.value}>{reading.value}</ThemedText>
+            <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
             <ThemedText style={[styles.unit, { color: theme.textSecondary }]}>
-              {reading.unit}
+              {unitText(reading.type)}
             </ThemedText>
           </View>
           <ThemedText style={[styles.date, { color: theme.textSecondary }]}>
@@ -97,7 +119,10 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
             {tagLabels.map((label, index) => (
               <View
                 key={index}
-                style={[styles.tagChip, { backgroundColor: colors.primary + "15" }]}
+                style={[
+                  styles.tagChip,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
               >
                 <ThemedText style={[styles.tagText, { color: colors.primary }]}>
                   {label}
@@ -113,6 +138,14 @@ export function ReadingListItem({ reading, onPress, onDelete }: ReadingListItemP
           >
             {reading.notes}
           </ThemedText>
+        ) : null}
+        {reading.photoUri ? (
+          <Image
+            source={{ uri: reading.photoUri }}
+            style={styles.thumbnail}
+            contentFit="cover"
+            accessibilityLabel="Attached reading photo"
+          />
         ) : null}
       </View>
       {onDelete ? (
@@ -216,6 +249,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: Spacing.xs,
     fontStyle: "italic",
+  },
+  thumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xs,
+    marginTop: Spacing.sm,
   },
   deleteButton: {
     padding: Spacing.sm,

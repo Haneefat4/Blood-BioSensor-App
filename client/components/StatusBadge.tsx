@@ -21,11 +21,14 @@ const STATUS_CONFIG = {
 export function StatusBadge({ status, showLabel = true }: StatusBadgeProps) {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  
-  const statusColor = 
-    status === "normal" ? colors.success :
-    status === "warning" ? colors.warning : colors.error;
-  
+
+  const statusColor =
+    status === "normal"
+      ? colors.success
+      : status === "warning"
+        ? colors.warning
+        : colors.error;
+
   const config = STATUS_CONFIG[status];
 
   return (

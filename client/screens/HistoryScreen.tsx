@@ -1,8 +1,17 @@
 import React, { useState, useMemo } from "react";
-import { View, FlatList, StyleSheet, Pressable, Alert, ScrollView } from "react-native";
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  Pressable,
+  Alert,
+  ScrollView,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
@@ -14,6 +23,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { ComparisonChart } from "@/components/ComparisonChart";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import type { HistoryStackParamList } from "@/navigation/HistoryStackNavigator";
 import type { ReadingType, Reading } from "@/types";
 import { READING_CONFIG } from "@/types";
 
@@ -28,7 +38,11 @@ const FILTERS: { value: FilterType; label: string }[] = [
   { value: "platelets", label: "Platelets" },
 ];
 
-const VIEW_MODES: { value: ViewMode; icon: keyof typeof Feather.glyphMap; label: string }[] = [
+const VIEW_MODES: {
+  value: ViewMode;
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+}[] = [
   { value: "list", icon: "list", label: "List" },
   { value: "calendar", icon: "calendar", label: "Calendar" },
   { value: "chart", icon: "bar-chart-2", label: "Charts" },
@@ -40,15 +54,28 @@ export default function HistoryScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
+  const navigation =
+    useNavigation<NativeStackNavigationProp<HistoryStackParamList>>();
   const { readings, removeReading } = useReadingsContext();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [selectedDayReadings, setSelectedDayReadings] = useState<Reading[] | null>(null);
+  const [selectedDay, setSelectedDay] = useState<{
+    key: string;
+    label: string;
+  } | null>(null);
 
   const filteredReadings = useMemo(() => {
     if (selectedFilter === "all") return readings;
     return readings.filter((r) => r.type === selectedFilter);
   }, [readings, selectedFilter]);
+
+  const selectedDayReadings = useMemo(() => {
+    if (!selectedDay) return [];
+    return readings.filter(
+      (reading) =>
+        new Date(reading.timestamp).toDateString() === selectedDay.key,
+    );
+  }, [readings, selectedDay]);
 
   const handleDelete = (reading: Reading) => {
     Alert.alert(
@@ -61,24 +88,44 @@ export default function HistoryScreen() {
           style: "destructive",
           onPress: () => removeReading(reading.id),
         },
-      ]
+      ],
     );
   };
 
-  const handleDayPress = (date: Date, dayReadings: Reading[]) => {
-    setSelectedDayReadings(dayReadings);
+  const handleDayPress = (date: Date) => {
+    setSelectedDay({
+      key: date.toDateString(),
+      label: date.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+    });
   };
 
   const clearSelectedDay = () => {
-    setSelectedDayReadings(null);
+    setSelectedDay(null);
+  };
+
+  const openReading = (reading: Reading) => {
+    navigation.navigate("ReadingDetail", { readingId: reading.id });
   };
 
   const renderItem = ({ item }: { item: Reading }) => (
-    <ReadingListItem reading={item} onDelete={() => handleDelete(item)} />
+    <ReadingListItem
+      reading={item}
+      onPress={() => openReading(item)}
+      onDelete={() => handleDelete(item)}
+    />
   );
 
   const ViewModeSelector = () => (
-    <View style={[styles.viewModeWrapper, { backgroundColor: theme.backgroundDefault }]}>
+    <View
+      style={[
+        styles.viewModeWrapper,
+        { backgroundColor: theme.backgroundDefault },
+      ]}
+    >
       {VIEW_MODES.map((mode) => {
         const isActive = viewMode === mode.value;
         return (
@@ -87,7 +134,7 @@ export default function HistoryScreen() {
             onPress={() => {
               Haptics.selectionAsync();
               setViewMode(mode.value);
-              setSelectedDayReadings(null);
+              setSelectedDay(null);
             }}
             style={[
               styles.viewModeBtn,
@@ -131,7 +178,9 @@ export default function HistoryScreen() {
             styles.filterChip,
             {
               backgroundColor:
-                selectedFilter === item.value ? colors.primary : theme.backgroundDefault,
+                selectedFilter === item.value
+                  ? colors.primary
+                  : theme.backgroundDefault,
             },
           ]}
         >
@@ -149,12 +198,21 @@ export default function HistoryScreen() {
   );
 
   const SelectedDayPanel = () => {
-    if (!selectedDayReadings) return null;
+    if (!selectedDay) return null;
+    const countLabel =
+      selectedDayReadings.length === 0
+        ? "No readings"
+        : `${selectedDayReadings.length} reading${selectedDayReadings.length === 1 ? "" : "s"}`;
     return (
-      <View style={[styles.selectedDayPanel, { backgroundColor: theme.backgroundDefault }]}>
+      <View
+        style={[
+          styles.selectedDayPanel,
+          { backgroundColor: theme.backgroundDefault },
+        ]}
+      >
         <View style={styles.selectedDayHeader}>
           <ThemedText style={styles.selectedDayTitle}>
-            {selectedDayReadings.length} reading{selectedDayReadings.length !== 1 ? "s" : ""}
+            {selectedDay.label} · {countLabel}
           </ThemedText>
           <Pressable onPress={clearSelectedDay} hitSlop={12}>
             <Feather name="x" size={20} color={theme.textSecondary} />
@@ -164,6 +222,7 @@ export default function HistoryScreen() {
           <ReadingListItem
             key={reading.id}
             reading={reading}
+            onPress={() => openReading(reading)}
             onDelete={() => handleDelete(reading)}
           />
         ))}
@@ -173,7 +232,9 @@ export default function HistoryScreen() {
 
   if (viewMode === "calendar") {
     return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={{
@@ -194,7 +255,9 @@ export default function HistoryScreen() {
 
   if (viewMode === "chart") {
     return (
-      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <View
+        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
+      >
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={{

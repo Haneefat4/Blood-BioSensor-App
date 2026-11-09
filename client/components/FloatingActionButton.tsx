@@ -17,7 +17,10 @@ interface FloatingActionButtonProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function FloatingActionButton({ onPress, bottomOffset }: FloatingActionButtonProps) {
+export function FloatingActionButton({
+  onPress,
+  bottomOffset,
+}: FloatingActionButtonProps) {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const scale = useSharedValue(1);
@@ -44,11 +47,9 @@ export function FloatingActionButton({ onPress, bottomOffset }: FloatingActionBu
         {
           backgroundColor: colors.primary,
           bottom: bottomOffset,
-          ...Platform.select({
-            ios: Shadows.fab,
-            android: { elevation: Shadows.fab.elevation },
-          }),
         },
+        Platform.OS === "ios" ? Shadows.fab : null,
+        Platform.OS === "android" ? { elevation: Shadows.fab.elevation } : null,
         animatedStyle,
       ]}
     >

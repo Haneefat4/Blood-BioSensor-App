@@ -46,13 +46,18 @@ export function SettingsRow({
           <Switch
             value={switchValue}
             onValueChange={onSwitchChange}
-            trackColor={{ false: theme.backgroundSecondary, true: colors.primary }}
+            trackColor={{
+              false: theme.backgroundSecondary,
+              true: colors.primary,
+            }}
             thumbColor="#FFFFFF"
           />
         ) : (
           <>
             {value ? (
-              <ThemedText style={[styles.value, { color: theme.textSecondary }]}>
+              <ThemedText
+                style={[styles.value, { color: theme.textSecondary }]}
+              >
                 {value}
               </ThemedText>
             ) : null}

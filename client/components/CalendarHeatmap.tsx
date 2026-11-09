@@ -16,7 +16,10 @@ interface CalendarHeatmapProps {
 const DAYS_OF_WEEK = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKS_TO_SHOW = 12;
 
-export function CalendarHeatmap({ readings, onDayPress }: CalendarHeatmapProps) {
+export function CalendarHeatmap({
+  readings,
+  onDayPress,
+}: CalendarHeatmapProps) {
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
 
@@ -35,7 +38,8 @@ export function CalendarHeatmap({ readings, onDayPress }: CalendarHeatmapProps) 
       readingsByDate.set(dateKey, existing);
     });
 
-    const weeksArr: { date: Date; readings: Reading[]; isToday: boolean }[][] = [];
+    const weeksArr: { date: Date; readings: Reading[]; isToday: boolean }[][] =
+      [];
     const labels: { week: number; label: string }[] = [];
     let currentDate = new Date(startDate);
     let lastMonth = -1;
@@ -65,14 +69,6 @@ export function CalendarHeatmap({ readings, onDayPress }: CalendarHeatmapProps) 
     return { weeks: weeksArr, monthLabels: labels };
   }, [readings]);
 
-  const getIntensity = (count: number): string => {
-    if (count === 0) return theme.backgroundSecondary;
-    if (count === 1) return colors.primary + "40";
-    if (count === 2) return colors.primary + "70";
-    if (count === 3) return colors.primary + "A0";
-    return colors.primary;
-  };
-
   const getStatusColor = (dayReadings: Reading[]): string => {
     if (dayReadings.length === 0) return theme.backgroundSecondary;
     const hasCritical = dayReadings.some((r) => r.status === "critical");
@@ -83,7 +79,9 @@ export function CalendarHeatmap({ readings, onDayPress }: CalendarHeatmapProps) 
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundDefault }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.backgroundDefault }]}
+    >
       <View style={styles.header}>
         <Feather name="calendar" size={18} color={colors.primary} />
         <ThemedText style={styles.title}>Reading Activity</ThemedText>
@@ -146,10 +144,27 @@ export function CalendarHeatmap({ readings, onDayPress }: CalendarHeatmapProps) 
         <ThemedText style={[styles.legendText, { color: theme.textSecondary }]}>
           Less
         </ThemedText>
-        <View style={[styles.legendCell, { backgroundColor: theme.backgroundSecondary }]} />
-        <View style={[styles.legendCell, { backgroundColor: colors.success + "50" }]} />
-        <View style={[styles.legendCell, { backgroundColor: colors.warning + "70" }]} />
-        <View style={[styles.legendCell, { backgroundColor: colors.error + "80" }]} />
+        <View
+          style={[
+            styles.legendCell,
+            { backgroundColor: theme.backgroundSecondary },
+          ]}
+        />
+        <View
+          style={[
+            styles.legendCell,
+            { backgroundColor: colors.success + "50" },
+          ]}
+        />
+        <View
+          style={[
+            styles.legendCell,
+            { backgroundColor: colors.warning + "70" },
+          ]}
+        />
+        <View
+          style={[styles.legendCell, { backgroundColor: colors.error + "80" }]}
+        />
         <ThemedText style={[styles.legendText, { color: theme.textSecondary }]}>
           More
         </ThemedText>
