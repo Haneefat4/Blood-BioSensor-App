@@ -1,13 +1,14 @@
 import React from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
+import { PRIVACY_SECTIONS } from "@/content/legalCopy";
+import { useTheme } from "@/hooks/useTheme";
+import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 
 export default function PrivacyPolicyScreen() {
   const insets = useSafeAreaInsets();
@@ -26,48 +27,27 @@ export default function PrivacyPolicyScreen() {
       }}
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
-      <View
-        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
-      >
-        <View style={styles.headingRow}>
-          <Feather name="smartphone" size={20} color={colors.primary} />
-          <ThemedText style={styles.heading}>Stored on this device</ThemedText>
+      {PRIVACY_SECTIONS.map((section) => (
+        <View
+          key={section.title}
+          style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+        >
+          <View style={styles.headingRow}>
+            <Feather name={section.icon} size={20} color={colors.primary} />
+            <ThemedText accessibilityRole="header" style={styles.heading}>
+              {section.title}
+            </ThemedText>
+          </View>
+          {section.paragraphs.map((paragraph) => (
+            <ThemedText
+              key={paragraph}
+              style={[styles.body, { color: theme.textSecondary }]}
+            >
+              {paragraph}
+            </ThemedText>
+          ))}
         </View>
-        <ThemedText style={[styles.body, { color: theme.textSecondary }]}>
-          Readings, medications, reminders, photos you attach, and profile
-          preferences stay on this device. Blood Biosensor does not create an
-          account and does not upload that information to a server.
-        </ThemedText>
-      </View>
-
-      <View
-        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
-      >
-        <View style={styles.headingRow}>
-          <Feather name="share-2" size={20} color={colors.primary} />
-          <ThemedText style={styles.heading}>Exports you choose</ThemedText>
-        </View>
-        <ThemedText style={[styles.body, { color: theme.textSecondary }]}>
-          CSV and PDF exports leave the app only when you share or save them.
-          Clearing all data removes the local copy and cancels scheduled
-          reminders.
-        </ThemedText>
-      </View>
-
-      <View
-        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
-      >
-        <View style={styles.headingRow}>
-          <Feather name="alert-circle" size={20} color={colors.warning} />
-          <ThemedText style={styles.heading}>Not medical advice</ThemedText>
-        </View>
-        <ThemedText style={[styles.body, { color: theme.textSecondary }]}>
-          This app is a personal log, not a medical device. It does not
-          diagnose, treat, or interpret your health. Ranges shown here are
-          general reference points. Talk with a qualified clinician about your
-          results and before changing any treatment.
-        </ThemedText>
-      </View>
+      ))}
     </ScrollView>
   );
 }
@@ -88,11 +68,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   heading: {
+    flex: 1,
     fontSize: 18,
     fontWeight: "600",
   },
   body: {
     fontSize: 16,
     lineHeight: 24,
+    marginBottom: Spacing.sm,
   },
 });

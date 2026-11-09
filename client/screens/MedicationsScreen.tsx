@@ -14,7 +14,12 @@ import * as Haptics from "expo-haptics";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  Colors,
+  MinTouchTarget,
+} from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
@@ -129,7 +134,8 @@ export default function MedicationsScreen() {
       </View>
       <Pressable
         onPress={() => handleDelete(item)}
-        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={`Delete ${item.name}`}
         style={({ pressed }) => [
           styles.deleteBtn,
           { opacity: pressed ? 0.7 : 1 },
@@ -156,6 +162,7 @@ export default function MedicationsScreen() {
         <TextInput
           value={name}
           onChangeText={setName}
+          accessibilityLabel="Medication name"
           placeholder="e.g., Metformin"
           placeholderTextColor={theme.textSecondary}
           style={[
@@ -168,6 +175,7 @@ export default function MedicationsScreen() {
         <TextInput
           value={dosage}
           onChangeText={setDosage}
+          accessibilityLabel="Dosage"
           placeholder="e.g., 500mg"
           placeholderTextColor={theme.textSecondary}
           style={[
@@ -182,6 +190,9 @@ export default function MedicationsScreen() {
             <Pressable
               key={freq}
               onPress={() => setFrequency(freq)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: frequency === freq }}
+              accessibilityLabel={freq}
               style={[
                 styles.freqChip,
                 {
@@ -208,6 +219,7 @@ export default function MedicationsScreen() {
         <TextInput
           value={time}
           onChangeText={setTime}
+          accessibilityLabel="Time"
           placeholder="e.g., 8:00 AM"
           placeholderTextColor={theme.textSecondary}
           style={[
@@ -220,6 +232,7 @@ export default function MedicationsScreen() {
         <TextInput
           value={notes}
           onChangeText={setNotes}
+          accessibilityLabel="Notes"
           placeholder="Any additional notes..."
           placeholderTextColor={theme.textSecondary}
           multiline
@@ -233,6 +246,8 @@ export default function MedicationsScreen() {
         <View style={styles.buttonRow}>
           <Pressable
             onPress={resetForm}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
             style={[
               styles.cancelBtn,
               { backgroundColor: theme.backgroundDefault },
@@ -275,6 +290,8 @@ export default function MedicationsScreen() {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           setShowForm(true);
         }}
+        accessibilityRole="button"
+        accessibilityLabel="Add medication"
         style={({ pressed }) => [
           styles.fab,
           {
@@ -330,9 +347,12 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   freqChip: {
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
   },
   freqText: {
     fontSize: 13,
@@ -386,7 +406,10 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   deleteBtn: {
-    padding: Spacing.sm,
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
     marginLeft: Spacing.sm,
   },
   fab: {

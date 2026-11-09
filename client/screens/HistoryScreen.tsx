@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   FlatList,
@@ -6,6 +6,7 @@ import {
   Pressable,
   Alert,
   ScrollView,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
@@ -16,13 +17,27 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import {
+  BorderRadius,
+  MinTouchTarget,
+  Spacing,
+  Colors,
+} from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { ReadingListItem } from "@/components/ReadingListItem";
 import { EmptyState } from "@/components/EmptyState";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { ComparisonChart } from "@/components/ComparisonChart";
+import { DateTimeField } from "@/components/DateTimeField";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import { usePreferencesContext } from "@/context/PreferencesContext";
+import { buildReadingsCsv } from "@/lib/exportFormat";
+import {
+  filterReadings,
+  startOfLocalDay,
+  type HistoryRange,
+} from "@/lib/readingOrder";
+import { isShareCancelled, shareTextFile } from "@/lib/shareFile";
 import type { HistoryStackParamList } from "@/navigation/HistoryStackNavigator";
 import type { ReadingType, Reading } from "@/types";
 import { READING_CONFIG } from "@/types";
@@ -36,6 +51,13 @@ const FILTERS: { value: FilterType; label: string }[] = [
   { value: "hemoglobin", label: "Hemoglobin" },
   { value: "cholesterol", label: "Cholesterol" },
   { value: "platelets", label: "Platelets" },
+];
+
+const RANGES: { value: HistoryRange; label: string }[] = [
+  { value: "all", label: "Any date" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+  { value: "custom", label: "Custom" },
 ];
 
 const VIEW_MODES: {
@@ -57,30 +79,43 @@ export default function HistoryScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<HistoryStackParamList>>();
   const { readings, removeReading } = useReadingsContext();
+  const { preferences } = usePreferencesContext();
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [query, setQuery] = useState("");
+  const [range, setRange] = useState<HistoryRange>("all");
+  const [customStart, setCustomStart] = useState<Date | null>(null);
+  const [customEnd, setCustomEnd] = useState<Date | null>(null);
   const [selectedDay, setSelectedDay] = useState<{
     key: string;
     label: string;
   } | null>(null);
 
-  const filteredReadings = useMemo(() => {
-    if (selectedFilter === "all") return readings;
-    return readings.filter((r) => r.type === selectedFilter);
-  }, [readings, selectedFilter]);
+  const filteredReadings = useMemo(
+    () =>
+      filterReadings(readings, {
+        type: selectedFilter,
+        query,
+        range,
+        customStart: customStart ? customStart.getTime() : null,
+        customEnd: customEnd ? customEnd.getTime() : null,
+        now: Date.now(),
+      }),
+    [readings, selectedFilter, query, range, customStart, customEnd],
+  );
 
   const selectedDayReadings = useMemo(() => {
     if (!selectedDay) return [];
-    return readings.filter(
+    return filteredReadings.filter(
       (reading) =>
         new Date(reading.timestamp).toDateString() === selectedDay.key,
     );
-  }, [readings, selectedDay]);
+  }, [filteredReadings, selectedDay]);
 
   const handleDelete = (reading: Reading) => {
     Alert.alert(
       "Delete Reading",
-      `Are you sure you want to delete this ${READING_CONFIG[reading.type].label} reading?`,
+      `Delete this ${READING_CONFIG[reading.type].label} reading from your log?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -90,6 +125,27 @@ export default function HistoryScreen() {
         },
       ],
     );
+  };
+
+  const handleExport = async (reading: Reading) => {
+    try {
+      const csv = buildReadingsCsv([reading], {
+        units: preferences.units,
+        sex: preferences.referenceSex,
+      });
+      const day = new Date(reading.timestamp).toISOString().slice(0, 10);
+      await shareTextFile(
+        `blood-biosensor-${reading.type}-${day}.csv`,
+        csv,
+        "text/csv",
+      );
+    } catch (error) {
+      if (isShareCancelled(error)) return;
+      Alert.alert(
+        "Export failed",
+        "This reading could not be shared. Please try again.",
+      );
+    }
   };
 
   const handleDayPress = (date: Date) => {
@@ -103,107 +159,188 @@ export default function HistoryScreen() {
     });
   };
 
-  const clearSelectedDay = () => {
-    setSelectedDay(null);
-  };
-
   const openReading = (reading: Reading) => {
     navigation.navigate("ReadingDetail", { readingId: reading.id });
   };
 
-  const renderItem = ({ item }: { item: Reading }) => (
-    <ReadingListItem
-      reading={item}
-      onPress={() => openReading(item)}
-      onDelete={() => handleDelete(item)}
-    />
-  );
+  const today = startOfLocalDay(Date.now());
 
-  const ViewModeSelector = () => (
-    <View
-      style={[
-        styles.viewModeWrapper,
-        { backgroundColor: theme.backgroundDefault },
-      ]}
-    >
-      {VIEW_MODES.map((mode) => {
-        const isActive = viewMode === mode.value;
-        return (
-          <Pressable
-            key={mode.value}
-            onPress={() => {
-              Haptics.selectionAsync();
-              setViewMode(mode.value);
-              setSelectedDay(null);
-            }}
-            style={[
-              styles.viewModeBtn,
-              { backgroundColor: isActive ? colors.primary : "transparent" },
-            ]}
-          >
-            <Feather
-              name={mode.icon}
-              size={14}
-              color={isActive ? "#FFFFFF" : theme.textSecondary}
-            />
-            <ThemedText
+  const controls = (
+    <View>
+      <View
+        accessibilityRole="tablist"
+        style={[
+          styles.viewModeWrapper,
+          { backgroundColor: theme.backgroundDefault },
+        ]}
+      >
+        {VIEW_MODES.map((mode) => {
+          const isActive = viewMode === mode.value;
+          return (
+            <Pressable
+              key={mode.value}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setViewMode(mode.value);
+                setSelectedDay(null);
+              }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`${mode.label} view`}
               style={[
-                styles.viewModeLabel,
-                { color: isActive ? "#FFFFFF" : theme.textSecondary },
+                styles.viewModeBtn,
+                { backgroundColor: isActive ? colors.primary : "transparent" },
               ]}
             >
-              {mode.label}
-            </ThemedText>
-          </Pressable>
-        );
-      })}
+              <Feather
+                name={mode.icon}
+                size={16}
+                color={isActive ? "#FFFFFF" : theme.textSecondary}
+              />
+              <ThemedText
+                style={[
+                  styles.viewModeLabel,
+                  { color: isActive ? "#FFFFFF" : theme.textSecondary },
+                ]}
+              >
+                {mode.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <TextInput
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search notes or type"
+        placeholderTextColor={theme.textSecondary}
+        accessibilityLabel="Search readings"
+        accessibilityHint="Filters the list by reading type, notes, or value"
+        autoCorrect={false}
+        style={[
+          styles.search,
+          { backgroundColor: theme.backgroundDefault, color: theme.text },
+        ]}
+      />
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScrollContainer}
+        contentContainerStyle={styles.filterScrollContent}
+      >
+        {FILTERS.map((item) => {
+          const selected = selectedFilter === item.value;
+          return (
+            <Pressable
+              key={item.value}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setSelectedFilter(item.value);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Show ${item.label} readings`}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: selected
+                    ? colors.primary
+                    : theme.backgroundDefault,
+                },
+              ]}
+            >
+              <ThemedText
+                style={[
+                  styles.filterText,
+                  { color: selected ? "#FFFFFF" : theme.text },
+                ]}
+              >
+                {item.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScrollContainer}
+        contentContainerStyle={styles.filterScrollContent}
+      >
+        {RANGES.map((item) => {
+          const selected = range === item.value;
+          return (
+            <Pressable
+              key={item.value}
+              onPress={() => {
+                Haptics.selectionAsync();
+                if (item.value === "custom") {
+                  setCustomStart(
+                    (current) => current ?? startOfLocalDay(Date.now()),
+                  );
+                  setCustomEnd((current) => current ?? new Date());
+                }
+                setRange(item.value);
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`Date range ${item.label}`}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: selected
+                    ? colors.primary
+                    : theme.backgroundDefault,
+                },
+              ]}
+            >
+              <ThemedText
+                style={[
+                  styles.filterText,
+                  { color: selected ? "#FFFFFF" : theme.text },
+                ]}
+              >
+                {item.label}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {range === "custom" ? (
+        <View style={styles.customDates}>
+          <DateTimeField
+            mode="date"
+            label="From"
+            value={customStart ?? today}
+            maximumDate={customEnd ?? new Date()}
+            onChange={setCustomStart}
+            accessibilityHint="Start of the date range"
+          />
+          <DateTimeField
+            mode="date"
+            label="To"
+            value={customEnd ?? new Date()}
+            minimumDate={customStart ?? undefined}
+            maximumDate={new Date()}
+            onChange={setCustomEnd}
+            accessibilityHint="End of the date range"
+          />
+        </View>
+      ) : null}
+
+      <ThemedText style={[styles.hint, { color: theme.textSecondary }]}>
+        Swipe a row left to export or delete. Delete is also on the row. Export
+        creates a CSV file for you to share.
+      </ThemedText>
     </View>
   );
 
-  const FilterChips = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.filterScrollContainer}
-      contentContainerStyle={styles.filterScrollContent}
-    >
-      {FILTERS.map((item) => (
-        <Pressable
-          key={item.value}
-          onPress={() => {
-            Haptics.selectionAsync();
-            setSelectedFilter(item.value);
-          }}
-          style={[
-            styles.filterChip,
-            {
-              backgroundColor:
-                selectedFilter === item.value
-                  ? colors.primary
-                  : theme.backgroundDefault,
-            },
-          ]}
-        >
-          <ThemedText
-            style={[
-              styles.filterText,
-              { color: selectedFilter === item.value ? "#FFFFFF" : theme.text },
-            ]}
-          >
-            {item.label}
-          </ThemedText>
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-
-  const SelectedDayPanel = () => {
-    if (!selectedDay) return null;
-    const countLabel =
-      selectedDayReadings.length === 0
-        ? "No readings"
-        : `${selectedDayReadings.length} reading${selectedDayReadings.length === 1 ? "" : "s"}`;
-    return (
+  const selectedDayPanel =
+    selectedDay == null ? null : (
       <View
         style={[
           styles.selectedDayPanel,
@@ -212,25 +349,34 @@ export default function HistoryScreen() {
       >
         <View style={styles.selectedDayHeader}>
           <ThemedText style={styles.selectedDayTitle}>
-            {selectedDay.label} · {countLabel}
+            {selectedDay.label} ·{" "}
+            {selectedDayReadings.length === 0
+              ? "No readings"
+              : `${selectedDayReadings.length} reading${selectedDayReadings.length === 1 ? "" : "s"}`}
           </ThemedText>
-          <Pressable onPress={clearSelectedDay} hitSlop={12}>
+          <Pressable
+            onPress={() => setSelectedDay(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Clear selected day"
+            style={styles.iconButton}
+          >
             <Feather name="x" size={20} color={theme.textSecondary} />
           </Pressable>
         </View>
         {selectedDayReadings.map((reading) => (
-          <ReadingListItem
-            key={reading.id}
-            reading={reading}
-            onPress={() => openReading(reading)}
-            onDelete={() => handleDelete(reading)}
-          />
+          <View key={reading.id} style={styles.dayItem}>
+            <ReadingListItem
+              reading={reading}
+              onPress={() => openReading(reading)}
+              onDelete={() => handleDelete(reading)}
+              onExport={() => handleExport(reading)}
+            />
+          </View>
         ))}
       </View>
     );
-  };
 
-  if (viewMode === "calendar") {
+  if (viewMode !== "list") {
     return (
       <View
         style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -243,36 +389,21 @@ export default function HistoryScreen() {
             paddingHorizontal: Spacing.lg,
           }}
           scrollIndicatorInsets={{ bottom: insets.bottom }}
+          keyboardShouldPersistTaps="handled"
         >
-          <ViewModeSelector />
+          {controls}
           <View style={styles.sectionGap} />
-          <CalendarHeatmap readings={readings} onDayPress={handleDayPress} />
-          <SelectedDayPanel />
-        </ScrollView>
-      </View>
-    );
-  }
-
-  if (viewMode === "chart") {
-    return (
-      <View
-        style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{
-            paddingTop: headerHeight + Spacing.lg,
-            paddingBottom: tabBarHeight + Spacing.xl,
-            paddingHorizontal: Spacing.lg,
-          }}
-          scrollIndicatorInsets={{ bottom: insets.bottom }}
-        >
-          <ViewModeSelector />
-          <View style={styles.sectionGap} />
-          <ComparisonChart readings={readings} />
-          <View style={styles.sectionGap} />
-          <CalendarHeatmap readings={readings} onDayPress={handleDayPress} />
-          <SelectedDayPanel />
+          {viewMode === "chart" ? (
+            <>
+              <ComparisonChart readings={filteredReadings} />
+              <View style={styles.sectionGap} />
+            </>
+          ) : null}
+          <CalendarHeatmap
+            readings={filteredReadings}
+            onDayPress={handleDayPress}
+          />
+          {selectedDayPanel}
         </ScrollView>
       </View>
     );
@@ -289,23 +420,35 @@ export default function HistoryScreen() {
           flexGrow: 1,
         }}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
+        keyboardShouldPersistTaps="handled"
         data={filteredReadings}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <ReadingListItem
+            reading={item}
+            onPress={() => openReading(item)}
+            onDelete={() => handleDelete(item)}
+            onExport={() => handleExport(item)}
+          />
+        )}
         ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
         ListHeaderComponent={
           <View style={styles.listHeader}>
-            <ViewModeSelector />
-            <View style={styles.sectionGap} />
-            <FilterChips />
+            {controls}
             <View style={styles.sectionGap} />
           </View>
         }
         ListEmptyComponent={
           <EmptyState
             icon="clipboard"
-            title="No readings yet"
-            subtitle="Start tracking your health by adding your first reading"
+            title={
+              readings.length === 0 ? "No readings yet" : "No matching readings"
+            }
+            subtitle={
+              readings.length === 0
+                ? "Add a reading you already have to start your log."
+                : "Try a different search or date range."
+            }
           />
         }
       />
@@ -341,31 +484,53 @@ const styles = StyleSheet.create({
   viewModeBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
   },
   viewModeLabel: {
     fontSize: 13,
     fontWeight: "500",
   },
+  search: {
+    minHeight: MinTouchTarget,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    fontSize: 16,
+  },
   filterScrollContainer: {
     marginHorizontal: -Spacing.lg,
+    marginTop: Spacing.md,
   },
   filterScrollContent: {
     paddingHorizontal: Spacing.lg,
     gap: Spacing.sm,
     flexDirection: "row",
+    alignItems: "center",
   },
   filterChip: {
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  customDates: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  hint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: Spacing.md,
   },
   selectedDayPanel: {
     marginTop: Spacing.lg,
@@ -381,5 +546,15 @@ const styles = StyleSheet.create({
   selectedDayTitle: {
     fontSize: 16,
     fontWeight: "600",
+    flex: 1,
+  },
+  dayItem: {
+    marginBottom: Spacing.sm,
+  },
+  iconButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

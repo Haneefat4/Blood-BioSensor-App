@@ -5,6 +5,7 @@ import ProfileScreen from "@/screens/ProfileScreen";
 import MedicationsScreen from "@/screens/MedicationsScreen";
 import RemindersScreen from "@/screens/RemindersScreen";
 import PrivacyPolicyScreen from "@/screens/PrivacyPolicyScreen";
+import AboutScreen from "@/screens/AboutScreen";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 
 export type ProfileStackParamList = {
@@ -12,6 +13,7 @@ export type ProfileStackParamList = {
   Medications: undefined;
   Reminders: undefined;
   PrivacyPolicy: undefined;
+  About: undefined;
 };
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
@@ -47,6 +49,13 @@ export default function ProfileStackNavigator() {
         component={PrivacyPolicyScreen}
         options={{
           title: "Privacy Policy",
+        }}
+      />
+      <Stack.Screen
+        name="About"
+        component={AboutScreen}
+        options={{
+          title: "About",
         }}
       />
     </Stack.Navigator>

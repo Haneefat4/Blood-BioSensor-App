@@ -1,11 +1,16 @@
 import React, { useMemo, useState } from "react";
-import { View, StyleSheet, Pressable, Dimensions } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import {
+  BorderRadius,
+  MinTouchTarget,
+  Spacing,
+  Colors,
+} from "@/constants/theme";
 import type { Reading, ReadingType } from "@/types";
 import { READING_CONFIG } from "@/types";
 
@@ -26,9 +31,7 @@ const TYPE_COLORS: Record<ReadingType, string> = {
   platelets: "#22C55E",
 };
 
-const screenWidth = Dimensions.get("window").width;
 const CHART_HEIGHT = 140;
-const CHART_PADDING = 40;
 
 export function ComparisonChart({ readings }: ComparisonChartProps) {
   const { theme, isDark } = useTheme();
@@ -37,6 +40,7 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
     "glucose",
     "hemoglobin",
   ]);
+  const [plotWidth, setPlotWidth] = useState(0);
 
   const toggleType = (type: ReadingType) => {
     Haptics.selectionAsync();
@@ -103,8 +107,7 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
     const { min, max } = chartData.minMax[type];
     const range = max - min || 1;
     const color = TYPE_COLORS[type];
-    const chartWidth = screenWidth - CHART_PADDING * 2 - Spacing.lg * 4;
-    const stepX = chartWidth / 6;
+    const stepX = plotWidth > 0 ? plotWidth / 6 : 0;
 
     const points: { x: number; y: number }[] = [];
     data.forEach((value, i) => {
@@ -186,11 +189,13 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
       <View style={styles.typeSelector}>
         {READING_TYPES.map((type) => {
           const isSelected = selectedTypes.includes(type);
-          const shortLabel = READING_CONFIG[type].label.slice(0, 3);
           return (
             <Pressable
               key={type}
               onPress={() => toggleType(type)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected }}
+              accessibilityLabel={`${READING_CONFIG[type].label} on the chart`}
               style={[
                 styles.typeChip,
                 {
@@ -209,7 +214,7 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
                   { color: isSelected ? "#FFFFFF" : theme.textSecondary },
                 ]}
               >
-                {shortLabel}
+                {READING_CONFIG[type].label}
               </ThemedText>
             </Pressable>
           );
@@ -217,7 +222,16 @@ export function ComparisonChart({ readings }: ComparisonChartProps) {
       </View>
 
       <View style={styles.chartContainer}>
-        <View style={styles.chart}>
+        <View
+          style={styles.chart}
+          collapsable={false}
+          onLayout={(event) => {
+            const nextWidth = event.nativeEvent.layout.width;
+            if (nextWidth > 0 && Math.abs(nextWidth - plotWidth) > 1) {
+              setPlotWidth(nextWidth);
+            }
+          }}
+        >
           {selectedTypes.map((type) => renderLine(type))}
         </View>
         <View style={styles.xLabels}>
@@ -272,14 +286,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.xs,
-    paddingVertical: 6,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
   },
   typeLabel: {
     fontSize: 11,
     fontWeight: "600",
+    textAlign: "center",
   },
   chartContainer: {
     height: CHART_HEIGHT + 24,

@@ -38,7 +38,12 @@ export function HeroCard({ reading }: HeroCardProps) {
   const timeAgo = getTimeAgo(reading.timestamp);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.primary }]}>
+    <View
+      accessible
+      accessibilityRole="summary"
+      accessibilityLabel={`${config.label}, ${valueText(reading)} ${unitText(reading.type)}, ${assessment.label}, ${timeAgo}`}
+      style={[styles.container, { backgroundColor: colors.primary }]}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconWrapper}>
@@ -49,7 +54,9 @@ export function HeroCard({ reading }: HeroCardProps) {
         <StatusBadge status={assessment.severity} label={assessment.label} />
       </View>
       <View style={styles.valueSection}>
-        <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
+        <ThemedText type="readingDisplay" style={styles.value}>
+          {valueText(reading)}
+        </ThemedText>
         <ThemedText style={styles.unit}>{unitText(reading.type)}</ThemedText>
       </View>
       <ThemedText style={styles.timestamp}>{timeAgo}</ThemedText>
@@ -64,6 +71,9 @@ function getTimeAgo(timestamp: number): string {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
+  if (diff < 0) {
+    return new Date(timestamp).toLocaleString();
+  }
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes} min ago`;
   if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;

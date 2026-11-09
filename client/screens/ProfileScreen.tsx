@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
   View,
   StyleSheet,
   TextInput,
   Alert,
-  Share,
   Platform,
   Pressable,
 } from "react-native";
@@ -29,12 +29,10 @@ import { usePreferencesContext } from "@/context/PreferencesContext";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
-import { displayUnitFor, formatMeasurement } from "@/lib/units";
-import { REFERENCE_RANGE_NOTE } from "@/lib/referenceRanges";
-import { useReadingDisplay } from "@/hooks/useReadingDisplay";
+import { buildReadingsCsv, buildReadingsPdfHtml } from "@/lib/exportFormat";
+import { isShareCancelled, shareTextFile } from "@/lib/shareFile";
 import { syncScheduledReminders } from "@/lib/reminders";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
-import { READING_CONFIG, READING_TAGS } from "@/types";
 import type { ReferenceSex, UserPreferences } from "@/types";
 
 const SEX_OPTIONS: { value: ReferenceSex; label: string }[] = [
@@ -62,9 +60,9 @@ export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { assess } = useReadingDisplay();
   const {
     preferences,
+    isLoading,
     updatePreferences,
     refresh: refreshPreferences,
   } = usePreferencesContext();
@@ -75,8 +73,10 @@ export default function ProfileScreen() {
   const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
-    setTempName(preferences.displayName);
-  }, [preferences.displayName]);
+    if (!editingName) {
+      setTempName(preferences.displayName);
+    }
+  }, [preferences.displayName, editingName]);
 
   const handleNameSave = () => {
     if (tempName.trim()) {
@@ -95,55 +95,16 @@ export default function ProfileScreen() {
 
     setIsExporting(true);
     try {
-      const headers = [
-        "Date",
-        "Time",
-        "Type",
-        "Value",
-        "Unit",
-        "Status",
-        "Fasting",
-        "Tags",
-        "Notes",
-      ];
-      const rows = readings.map((r) => {
-        const date = new Date(r.timestamp);
-        const tags =
-          r.tags
-            ?.map((t) => READING_TAGS.find((tag) => tag.id === t)?.label || t)
-            .join("; ") || "";
-        return [
-          date.toLocaleDateString(),
-          date.toLocaleTimeString(),
-          READING_CONFIG[r.type].label,
-          formatMeasurement(r.type, r.value, preferences.units),
-          displayUnitFor(r.type, preferences.units),
-          assess(r).label,
-          r.isFasting ? "Yes" : "No",
-          tags,
-          r.notes || "",
-        ]
-          .map((cell) => `"${cell.replace(/"/g, '""')}"`)
-          .join(",");
+      const csv = buildReadingsCsv(readings, {
+        units: preferences.units,
+        sex: preferences.referenceSex,
       });
-      const csv = [headers.join(","), ...rows].join("\n");
-
-      if (Platform.OS === "web") {
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `blood-biosensor-export-${new Date().toISOString().split("T")[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        await Share.share({
-          message: csv,
-          title: "Blood Biosensor Export",
-        });
+      const day = new Date().toISOString().slice(0, 10);
+      await shareTextFile(`blood-biosensor-log-${day}.csv`, csv, "text/csv");
+    } catch (error) {
+      if (!isShareCancelled(error)) {
+        Alert.alert("Error", "Failed to export data.");
       }
-    } catch {
-      Alert.alert("Error", "Failed to export data.");
     } finally {
       setIsExporting(false);
     }
@@ -157,76 +118,27 @@ export default function ProfileScreen() {
 
     setIsExporting(true);
     try {
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Blood Biosensor Report</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
-            h1 { color: #2563EB; margin-bottom: 20px; }
-            .summary { margin-bottom: 30px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-            th { background-color: #2563EB; color: white; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-            .normal { color: #22C55E; }
-            .warning { color: #F59E0B; }
-            .critical { color: #EF4444; }
-            .fasting { background-color: #FEF3C7; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-            .note { color: #4B5563; font-size: 13px; }
-          </style>
-        </head>
-        <body>
-          <h1>Blood Biosensor Health Report</h1>
-          <div class="summary">
-            <p><strong>User:</strong> ${preferences.displayName}</p>
-            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
-            <p><strong>Total Readings:</strong> ${readings.length}</p>
-            <p class="note">${REFERENCE_RANGE_NOTE}</p>
-          </div>
-          <table>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Value</th>
-              <th>Status</th>
-              <th>Fasting</th>
-              <th>Notes</th>
-            </tr>
-            ${readings
-              .map((r) => {
-                const assessment = assess(r);
-                return `
-              <tr>
-                <td>${new Date(r.timestamp).toLocaleDateString()} ${new Date(r.timestamp).toLocaleTimeString()}</td>
-                <td>${READING_CONFIG[r.type].label}</td>
-                <td>${formatMeasurement(r.type, r.value, preferences.units)} ${displayUnitFor(r.type, preferences.units)}</td>
-                <td class="${assessment.severity}">${assessment.label}</td>
-                <td>${r.isFasting ? '<span class="fasting">Fasting</span>' : "-"}</td>
-                <td>${r.notes || "-"}</td>
-              </tr>
-            `;
-              })
-              .join("")}
-          </table>
-        </body>
-        </html>
-      `;
+      const html = buildReadingsPdfHtml({
+        displayName: preferences.displayName,
+        readings,
+        units: preferences.units,
+        sex: preferences.referenceSex,
+      });
 
       const { uri } = await Print.printToFileAsync({ html });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, {
           mimeType: "application/pdf",
-          dialogTitle: "Share Health Report",
+          dialogTitle: "Share Blood Biosensor log",
           UTI: "com.adobe.pdf",
         });
       } else {
         Alert.alert("Success", "PDF saved to: " + uri);
       }
-    } catch {
-      Alert.alert("Error", "Failed to generate PDF.");
+    } catch (error) {
+      if (!isShareCancelled(error)) {
+        Alert.alert("Error", "Failed to generate PDF.");
+      }
     } finally {
       setIsExporting(false);
     }
@@ -284,6 +196,21 @@ export default function ProfileScreen() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.loading,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+        accessibilityLabel="Loading saved preferences"
+      >
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -309,6 +236,7 @@ export default function ProfileScreen() {
             <TextInput
               value={tempName}
               onChangeText={setTempName}
+              accessibilityLabel="Display name"
               onBlur={handleNameSave}
               onSubmitEditing={handleNameSave}
               autoFocus
@@ -448,7 +376,8 @@ export default function ProfileScreen() {
               <Pressable
                 key={option.value}
                 onPress={() => updatePreferences({ darkMode: option.value })}
-                accessibilityRole="button"
+                accessibilityRole="radio"
+                accessibilityLabel={`${option.label} appearance`}
                 accessibilityState={{ selected }}
                 style={[
                   styles.appearanceOption,
@@ -484,9 +413,8 @@ export default function ProfileScreen() {
         <ThemedText style={styles.sectionTitle}>About</ThemedText>
         <SettingsRow
           icon="info"
-          label="Version"
-          value="1.0.0"
-          showChevron={false}
+          label="About"
+          onPress={() => navigation.navigate("About")}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingsRow
@@ -511,6 +439,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loading: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   section: {
     padding: Spacing.lg,

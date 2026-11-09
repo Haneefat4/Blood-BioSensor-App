@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
+  ActivityIndicator,
   View,
   StyleSheet,
   TextInput,
@@ -16,7 +17,12 @@ import * as Haptics from "expo-haptics";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  Colors,
+  MinTouchTarget,
+} from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { usePreferencesContext } from "@/context/PreferencesContext";
@@ -37,31 +43,33 @@ export default function RemindersScreen() {
   const headerHeight = useHeaderHeight();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const { preferences, updatePreferences } = usePreferencesContext();
+  const { preferences, isLoading, updatePreferences } = usePreferencesContext();
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [enabled, setEnabled] = useState(
-    preferences.reminderSettings?.enabled || false,
-  );
-  const [times, setTimes] = useState<string[]>(() =>
-    sortTimes(preferences.reminderSettings?.times || ["09:00", "21:00"]),
-  );
-  const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>(
-    preferences.reminderSettings?.types || ["glucose"],
-  );
+  const [enabled, setEnabled] = useState(false);
+  const [times, setTimes] = useState<string[]>(["09:00", "21:00"]);
+  const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>([
+    "glucose",
+  ]);
   const [newTime, setNewTime] = useState("");
+  const [draftReady, setDraftReady] = useState(false);
+  const hydrated = useRef(false);
 
   useEffect(() => {
     checkPermission();
   }, []);
 
   useEffect(() => {
+    if (isLoading || hydrated.current) return;
+    hydrated.current = true;
     const settings = preferences.reminderSettings;
-    if (!settings) return;
-    setEnabled(settings.enabled);
-    setTimes(sortTimes(settings.times));
-    setSelectedTypes(settings.types);
-  }, [preferences.reminderSettings]);
+    setEnabled(settings?.enabled ?? false);
+    setTimes(
+      sortTimes(settings?.times?.length ? settings.times : ["09:00", "21:00"]),
+    );
+    setSelectedTypes(settings?.types?.length ? settings.types : ["glucose"]);
+    setDraftReady(true);
+  }, [isLoading, preferences.reminderSettings]);
 
   const checkPermission = async () => {
     if (Platform.OS === "web") {
@@ -151,6 +159,21 @@ export default function RemindersScreen() {
     Alert.alert("Saved", "Your reminder settings have been saved.");
   };
 
+  if (!draftReady) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.loading,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+        accessibilityLabel="Loading saved reminders"
+      >
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <KeyboardAwareScrollViewCompat
       style={[styles.container, { backgroundColor: theme.backgroundRoot }]}
@@ -178,6 +201,7 @@ export default function RemindersScreen() {
           <ThemedText style={styles.sectionTitle}>Enable Reminders</ThemedText>
           <Switch
             value={enabled}
+            accessibilityLabel="Enable reminders"
             onValueChange={(val) => {
               Haptics.selectionAsync();
               setEnabled(val);
@@ -200,6 +224,8 @@ export default function RemindersScreen() {
         {!hasPermission && enabled ? (
           <Pressable
             onPress={requestPermission}
+            accessibilityRole="button"
+            accessibilityLabel="Allow notifications"
             style={[styles.permissionBtn, { backgroundColor: colors.primary }]}
           >
             <Feather name="bell" size={16} color="#FFFFFF" />
@@ -233,8 +259,13 @@ export default function RemindersScreen() {
               <ThemedText style={[styles.timeText, { color: colors.primary }]}>
                 {time}
               </ThemedText>
-              <Pressable onPress={() => removeTime(time)} hitSlop={8}>
-                <Feather name="x" size={14} color={colors.primary} />
+              <Pressable
+                onPress={() => removeTime(time)}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${time}`}
+                style={styles.removeTimeBtn}
+              >
+                <Feather name="x" size={16} color={colors.primary} />
               </Pressable>
             </View>
           ))}
@@ -243,6 +274,7 @@ export default function RemindersScreen() {
           <TextInput
             value={newTime}
             onChangeText={setNewTime}
+            accessibilityLabel="New reminder time"
             placeholder="HH:MM"
             placeholderTextColor={theme.textSecondary}
             keyboardType="numbers-and-punctuation"
@@ -253,6 +285,8 @@ export default function RemindersScreen() {
           />
           <Pressable
             onPress={addTime}
+            accessibilityRole="button"
+            accessibilityLabel="Add reminder time"
             style={({ pressed }) => [
               styles.addBtn,
               { backgroundColor: colors.primary, opacity: pressed ? 0.7 : 1 },
@@ -283,6 +317,9 @@ export default function RemindersScreen() {
                 key={type}
                 onPress={() => toggleType(type)}
                 disabled={!enabled}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: isSelected, disabled: !enabled }}
+                accessibilityLabel={READING_CONFIG[type].label}
                 style={[
                   styles.typeChip,
                   {
@@ -322,6 +359,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  loading: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   webNotice: {
     flexDirection: "row",
     alignItems: "center",
@@ -354,6 +395,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
+    minHeight: MinTouchTarget,
     padding: Spacing.md,
     borderRadius: BorderRadius.lg,
     marginTop: Spacing.md,
@@ -376,9 +418,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    minHeight: MinTouchTarget,
+    paddingLeft: Spacing.md,
+    paddingRight: Spacing.xs,
     borderRadius: BorderRadius.full,
+  },
+  removeTimeBtn: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
   },
   timeText: {
     fontWeight: "600",
@@ -410,6 +459,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.lg,

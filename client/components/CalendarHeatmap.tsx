@@ -7,7 +7,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
-import type { Reading } from "@/types";
+import type { Reading, ReadingStatus } from "@/types";
 
 interface CalendarHeatmapProps {
   readings: Reading[];
@@ -71,17 +71,35 @@ export function CalendarHeatmap({
     return { weeks: weeksArr, monthLabels: labels };
   }, [readings]);
 
-  const getStatusColor = (dayReadings: Reading[]): string => {
-    if (dayReadings.length === 0) return theme.backgroundSecondary;
-    const hasCritical = dayReadings.some(
-      (reading) => assess(reading).severity === "critical",
-    );
-    const hasWarning = dayReadings.some(
-      (reading) => assess(reading).severity === "warning",
-    );
-    if (hasCritical) return colors.error + "80";
-    if (hasWarning) return colors.warning + "80";
-    return colors.success + "80";
+  const strongest = (dayReadings: Reading[]): ReadingStatus | "empty" => {
+    if (dayReadings.length === 0) return "empty";
+    if (
+      dayReadings.some((reading) => assess(reading).severity === "critical")
+    ) {
+      return "critical";
+    }
+    if (dayReadings.some((reading) => assess(reading).severity === "warning")) {
+      return "warning";
+    }
+    return "normal";
+  };
+
+  const describeDay = (day: { date: Date; readings: Reading[] }): string => {
+    const dateLabel = day.date.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+    const level = strongest(day.readings);
+    if (level === "empty") return `${dateLabel}. No readings.`;
+    const count = `${day.readings.length} reading${day.readings.length === 1 ? "" : "s"}`;
+    if (level === "critical") {
+      return `${dateLabel}. ${count}. Includes a reading far outside the usual range.`;
+    }
+    if (level === "warning") {
+      return `${dateLabel}. ${count}. Includes a reading outside the usual range.`;
+    }
+    return `${dateLabel}. ${count}. Inside the usual range.`;
   };
 
   return (
@@ -131,10 +149,26 @@ export function CalendarHeatmap({
                       onDayPress(day.date, day.readings);
                     }
                   }}
+                  accessibilityRole={
+                    day.readings.length > 0 ? "button" : "text"
+                  }
+                  accessibilityLabel={describeDay(day)}
+                  accessibilityState={{ disabled: day.readings.length === 0 }}
                   style={[
                     styles.cell,
+                    strongest(day.readings) === "normal" ? styles.circle : null,
+                    strongest(day.readings) === "critical"
+                      ? styles.diamond
+                      : null,
                     {
-                      backgroundColor: getStatusColor(day.readings),
+                      backgroundColor:
+                        strongest(day.readings) === "empty"
+                          ? theme.backgroundSecondary
+                          : strongest(day.readings) === "critical"
+                            ? colors.error
+                            : strongest(day.readings) === "warning"
+                              ? colors.warning
+                              : colors.success,
                       borderWidth: day.isToday ? 2 : 0,
                       borderColor: colors.primary,
                     },
@@ -147,33 +181,57 @@ export function CalendarHeatmap({
       </View>
 
       <View style={styles.legend}>
-        <ThemedText style={[styles.legendText, { color: theme.textSecondary }]}>
-          Less
-        </ThemedText>
-        <View
-          style={[
-            styles.legendCell,
-            { backgroundColor: theme.backgroundSecondary },
-          ]}
-        />
-        <View
-          style={[
-            styles.legendCell,
-            { backgroundColor: colors.success + "50" },
-          ]}
-        />
-        <View
-          style={[
-            styles.legendCell,
-            { backgroundColor: colors.warning + "70" },
-          ]}
-        />
-        <View
-          style={[styles.legendCell, { backgroundColor: colors.error + "80" }]}
-        />
-        <ThemedText style={[styles.legendText, { color: theme.textSecondary }]}>
-          More
-        </ThemedText>
+        <View style={styles.legendItem}>
+          <View
+            style={[
+              styles.legendCell,
+              { backgroundColor: theme.backgroundSecondary },
+            ]}
+          />
+          <ThemedText
+            style={[styles.legendText, { color: theme.textSecondary }]}
+          >
+            None
+          </ThemedText>
+        </View>
+        <View style={styles.legendItem}>
+          <View
+            style={[
+              styles.legendCell,
+              styles.circle,
+              { backgroundColor: colors.success },
+            ]}
+          />
+          <ThemedText
+            style={[styles.legendText, { color: theme.textSecondary }]}
+          >
+            In usual range
+          </ThemedText>
+        </View>
+        <View style={styles.legendItem}>
+          <View
+            style={[styles.legendCell, { backgroundColor: colors.warning }]}
+          />
+          <ThemedText
+            style={[styles.legendText, { color: theme.textSecondary }]}
+          >
+            Outside
+          </ThemedText>
+        </View>
+        <View style={styles.legendItem}>
+          <View
+            style={[
+              styles.legendCell,
+              styles.diamond,
+              { backgroundColor: colors.error },
+            ]}
+          />
+          <ThemedText
+            style={[styles.legendText, { color: theme.textSecondary }]}
+          >
+            Far outside
+          </ThemedText>
+        </View>
       </View>
     </View>
   );
@@ -212,8 +270,8 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     fontSize: 9,
-    height: 12,
-    lineHeight: 12,
+    height: 16,
+    lineHeight: 14,
     textAlign: "center",
   },
   weeksContainer: {
@@ -225,20 +283,32 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   cell: {
-    width: 10,
-    height: 10,
+    width: 14,
+    height: 14,
     borderRadius: 2,
+  },
+  circle: {
+    borderRadius: 7,
+  },
+  diamond: {
+    borderRadius: 2,
+    transform: [{ rotate: "45deg" }],
   },
   legend: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 4,
+    gap: Spacing.sm,
     marginTop: Spacing.md,
   },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
   legendCell: {
-    width: 10,
-    height: 10,
+    width: 12,
+    height: 12,
     borderRadius: 2,
   },
   legendText: {

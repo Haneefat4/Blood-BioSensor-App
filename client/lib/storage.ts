@@ -1,27 +1,55 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Reading, UserPreferences, Medication } from "@/types";
-import { DEFAULT_USER_PREFERENCES, normalizeReferenceSex } from "@/types";
+
+import type { Medication, Reading, UserPreferences } from "@/types";
 import { cancelScheduledReminders } from "@/lib/reminders";
+import { sortReadingsByTimestampDesc } from "@/lib/readingOrder";
+import {
+  inspectStoredMedications,
+  inspectStoredReadings,
+  parseStoredPreferences,
+} from "@/lib/storageParse";
 
 const READINGS_KEY = "@blood_biosensor_readings";
 const PREFERENCES_KEY = "@blood_biosensor_preferences";
 const MEDICATIONS_KEY = "@blood_biosensor_medications";
+const DISCLAIMER_KEY = "@blood_biosensor_disclaimer_accepted";
+
+const UNREADABLE_READINGS =
+  "Saved readings could not be read, so they were left unchanged.";
+const UNREADABLE_MEDICATIONS =
+  "Saved medications could not be read, so they were left unchanged.";
 
 export async function getReadings(): Promise<Reading[]> {
   try {
     const data = await AsyncStorage.getItem(READINGS_KEY);
-    return data ? JSON.parse(data) : [];
+    const inspected = inspectStoredReadings(data);
+    if (inspected.unreadable) {
+      console.error("Stored readings could not be parsed. Showing none.");
+    }
+    return sortReadingsByTimestampDesc(inspected.readings);
   } catch (error) {
     console.error("Error loading readings:", error);
     return [];
   }
 }
 
+async function loadReadingsForWrite(): Promise<Reading[]> {
+  const data = await AsyncStorage.getItem(READINGS_KEY);
+  const inspected = inspectStoredReadings(data);
+  if (inspected.unreadable) {
+    throw new Error(UNREADABLE_READINGS);
+  }
+  return sortReadingsByTimestampDesc(inspected.readings);
+}
+
 export async function saveReading(reading: Reading): Promise<void> {
   try {
-    const readings = await getReadings();
-    readings.unshift(reading);
-    await AsyncStorage.setItem(READINGS_KEY, JSON.stringify(readings));
+    const readings = await loadReadingsForWrite();
+    const next = sortReadingsByTimestampDesc([
+      reading,
+      ...readings.filter((item) => item.id !== reading.id),
+    ]);
+    await AsyncStorage.setItem(READINGS_KEY, JSON.stringify(next));
   } catch (error) {
     console.error("Error saving reading:", error);
     throw error;
@@ -30,8 +58,8 @@ export async function saveReading(reading: Reading): Promise<void> {
 
 export async function deleteReading(id: string): Promise<void> {
   try {
-    const readings = await getReadings();
-    const filtered = readings.filter((r) => r.id !== id);
+    const readings = await loadReadingsForWrite();
+    const filtered = readings.filter((reading) => reading.id !== id);
     await AsyncStorage.setItem(READINGS_KEY, JSON.stringify(filtered));
   } catch (error) {
     console.error("Error deleting reading:", error);
@@ -42,16 +70,10 @@ export async function deleteReading(id: string): Promise<void> {
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     const data = await AsyncStorage.getItem(PREFERENCES_KEY);
-    if (!data) return DEFAULT_USER_PREFERENCES;
-    const parsed = JSON.parse(data) as Partial<UserPreferences>;
-    return {
-      ...DEFAULT_USER_PREFERENCES,
-      ...parsed,
-      referenceSex: normalizeReferenceSex(parsed.referenceSex),
-    };
+    return parseStoredPreferences(data);
   } catch (error) {
     console.error("Error loading preferences:", error);
-    return DEFAULT_USER_PREFERENCES;
+    return parseStoredPreferences(null);
   }
 }
 
@@ -69,16 +91,29 @@ export async function saveUserPreferences(
 export async function getMedications(): Promise<Medication[]> {
   try {
     const data = await AsyncStorage.getItem(MEDICATIONS_KEY);
-    return data ? JSON.parse(data) : [];
+    const inspected = inspectStoredMedications(data);
+    if (inspected.unreadable) {
+      console.error("Stored medications could not be parsed. Showing none.");
+    }
+    return inspected.medications;
   } catch (error) {
     console.error("Error loading medications:", error);
     return [];
   }
 }
 
+async function loadMedicationsForWrite(): Promise<Medication[]> {
+  const data = await AsyncStorage.getItem(MEDICATIONS_KEY);
+  const inspected = inspectStoredMedications(data);
+  if (inspected.unreadable) {
+    throw new Error(UNREADABLE_MEDICATIONS);
+  }
+  return inspected.medications;
+}
+
 export async function saveMedication(medication: Medication): Promise<void> {
   try {
-    const medications = await getMedications();
+    const medications = await loadMedicationsForWrite();
     medications.unshift(medication);
     await AsyncStorage.setItem(MEDICATIONS_KEY, JSON.stringify(medications));
   } catch (error) {
@@ -89,8 +124,8 @@ export async function saveMedication(medication: Medication): Promise<void> {
 
 export async function updateMedication(medication: Medication): Promise<void> {
   try {
-    const medications = await getMedications();
-    const index = medications.findIndex((m) => m.id === medication.id);
+    const medications = await loadMedicationsForWrite();
+    const index = medications.findIndex((item) => item.id === medication.id);
     if (index >= 0) {
       medications[index] = medication;
       await AsyncStorage.setItem(MEDICATIONS_KEY, JSON.stringify(medications));
@@ -103,11 +138,30 @@ export async function updateMedication(medication: Medication): Promise<void> {
 
 export async function deleteMedication(id: string): Promise<void> {
   try {
-    const medications = await getMedications();
-    const filtered = medications.filter((m) => m.id !== id);
+    const medications = await loadMedicationsForWrite();
+    const filtered = medications.filter((item) => item.id !== id);
     await AsyncStorage.setItem(MEDICATIONS_KEY, JSON.stringify(filtered));
   } catch (error) {
     console.error("Error deleting medication:", error);
+    throw error;
+  }
+}
+
+export async function hasAcceptedDisclaimer(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(DISCLAIMER_KEY);
+    return value === "accepted";
+  } catch (error) {
+    console.error("Error reading disclaimer acknowledgement:", error);
+    return false;
+  }
+}
+
+export async function acceptDisclaimer(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(DISCLAIMER_KEY, "accepted");
+  } catch (error) {
+    console.error("Error saving disclaimer acknowledgement:", error);
     throw error;
   }
 }

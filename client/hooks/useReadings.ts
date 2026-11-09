@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Reading, ReadingType, ReadingTag, ReferenceSex } from "@/types";
 import { getReadings, saveReading, deleteReading } from "@/lib/storage";
+import { latestReading, sortReadingsByTimestampDesc } from "@/lib/readingOrder";
 import { assessReading } from "@/lib/referenceRanges";
 import { READING_CONFIG } from "@/types";
 
@@ -11,6 +12,8 @@ export interface AddReadingOptions {
   photoUri?: string;
   /** Hemoglobin band at save time. Screens still recompute on display. */
   referenceSex?: ReferenceSex;
+  /** When the sample was taken. Defaults to the moment it is saved. */
+  timestamp?: number;
 }
 
 export function useReadings() {
@@ -38,12 +41,16 @@ export function useReadings() {
       const config = READING_CONFIG[type];
       // Callers pass the canonical unit. The stored severity is a snapshot;
       // every screen recomputes from referenceRanges when it renders.
+      const timestamp =
+        options?.timestamp != null && Number.isFinite(options.timestamp)
+          ? options.timestamp
+          : Date.now();
       const newReading: Reading = {
-        id: Date.now().toString(),
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
         type,
         value,
         unit: config.defaultUnit,
-        timestamp: Date.now(),
+        timestamp,
         notes: options?.notes,
         status: assessReading({
           type,
@@ -56,7 +63,12 @@ export function useReadings() {
         photoUri: options?.photoUri,
       };
       await saveReading(newReading);
-      setReadings((prev) => [newReading, ...prev]);
+      setReadings((prev) =>
+        sortReadingsByTimestampDesc([
+          newReading,
+          ...prev.filter((item) => item.id !== newReading.id),
+        ]),
+      );
       return newReading;
     },
     [],
@@ -69,13 +81,13 @@ export function useReadings() {
 
   const getLatestByType = useCallback(
     (type: ReadingType): Reading | undefined => {
-      return readings.find((r) => r.type === type);
+      return latestReading(readings, (reading) => reading.type === type);
     },
     [readings],
   );
 
   const getLatestReading = useCallback((): Reading | undefined => {
-    return readings[0];
+    return latestReading(readings);
   }, [readings]);
 
   const refresh = useCallback(async () => {

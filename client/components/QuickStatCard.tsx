@@ -43,11 +43,19 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
     scale.value = withSpring(1, { damping: 15, stiffness: 150 });
   };
 
+  const summary = reading
+    ? `${config.label}, ${valueText(reading)} ${unitText(type)}, ${assessment?.label ?? "no comparison"}`
+    : `${config.label}, no reading yet`;
+
   return (
     <AnimatedPressable
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      disabled={!onPress}
+      accessible
+      accessibilityRole={onPress ? "button" : "summary"}
+      accessibilityLabel={summary}
       style={[
         styles.container,
         { backgroundColor: theme.backgroundDefault },
@@ -64,11 +72,7 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
           <Feather name={config.icon as any} size={16} color={colors.primary} />
         </View>
         {assessment ? (
-          <StatusBadge
-            status={assessment.severity}
-            label={assessment.label}
-            showLabel={false}
-          />
+          <StatusBadge status={assessment.severity} label={assessment.label} />
         ) : null}
       </View>
       <ThemedText style={[styles.label, { color: theme.textSecondary }]}>

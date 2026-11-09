@@ -16,8 +16,15 @@ import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
+import { DateTimeField } from "@/components/DateTimeField";
 import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Colors } from "@/constants/theme";
+import {
+  Spacing,
+  BorderRadius,
+  Colors,
+  MinTouchTarget,
+} from "@/constants/theme";
+import { startOfLocalDay } from "@/lib/readingOrder";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useReadingsContext } from "@/context/ReadingsContext";
@@ -50,7 +57,28 @@ export default function AddReadingScreen() {
   const [isFasting, setIsFasting] = useState(false);
   const [selectedTags, setSelectedTags] = useState<ReadingTag[]>([]);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [timestamp, setTimestamp] = useState(() => Date.now());
   const [isSaving, setIsSaving] = useState(false);
+
+  const applyDate = (picked: Date) => {
+    setTimestamp((current) => {
+      const next = new Date(current);
+      next.setFullYear(
+        picked.getFullYear(),
+        picked.getMonth(),
+        picked.getDate(),
+      );
+      return Math.min(next.getTime(), Date.now());
+    });
+  };
+
+  const applyTime = (picked: Date) => {
+    setTimestamp((current) => {
+      const next = new Date(current);
+      next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
+      return Math.min(next.getTime(), Date.now());
+    });
+  };
 
   const unitLabel = displayUnitFor(selectedType, preferences.units);
   const validation = validateReadingInput(
@@ -143,6 +171,7 @@ export default function AddReadingScreen() {
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photoUri: photoUri || undefined,
         referenceSex: preferences.referenceSex,
+        timestamp,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
@@ -164,7 +193,11 @@ export default function AddReadingScreen() {
       scrollIndicatorInsets={{ bottom: insets.bottom }}
     >
       <ThemedText style={styles.label}>Reading Type</ThemedText>
-      <View style={styles.typeGrid}>
+      <View
+        style={styles.typeGrid}
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Reading type"
+      >
         {READING_TYPES.map((type) => {
           const typeConfig = READING_CONFIG[type];
           const isSelected = selectedType === type;
@@ -172,6 +205,9 @@ export default function AddReadingScreen() {
             <Pressable
               key={type}
               onPress={() => setSelectedType(type)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={typeConfig.label}
               style={({ pressed }) => [
                 styles.typeCard,
                 {
@@ -210,6 +246,7 @@ export default function AddReadingScreen() {
           autoCorrect={false}
           autoCapitalize="none"
           accessibilityLabel="Reading value"
+          accessibilityHint="Number from your meter or lab report"
           placeholder="0"
           placeholderTextColor={theme.textSecondary}
           style={[
@@ -251,6 +288,36 @@ export default function AddReadingScreen() {
         </View>
       </View>
 
+      <ThemedText style={styles.label}>When</ThemedText>
+      <ThemedText style={[styles.whenHint, { color: theme.textSecondary }]}>
+        Log a past reading by changing the date or time. Future times are not
+        saved.
+      </ThemedText>
+      <View style={styles.whenRow}>
+        <DateTimeField
+          mode="date"
+          label="Date"
+          value={new Date(timestamp)}
+          maximumDate={new Date()}
+          minimumDate={new Date(2000, 0, 1)}
+          onChange={applyDate}
+          accessibilityHint="Date the reading was taken"
+        />
+        <DateTimeField
+          mode="time"
+          label="Time"
+          value={new Date(timestamp)}
+          maximumDate={
+            startOfLocalDay(timestamp).getTime() ===
+            startOfLocalDay(Date.now()).getTime()
+              ? new Date()
+              : undefined
+          }
+          onChange={applyTime}
+          accessibilityHint="Time the reading was taken"
+        />
+      </View>
+
       <View
         style={[
           styles.fastingRow,
@@ -263,6 +330,8 @@ export default function AddReadingScreen() {
         </View>
         <Switch
           value={isFasting}
+          accessibilityLabel="Fasting reading"
+          accessibilityHint="Uses the fasting reference range for glucose"
           onValueChange={(val) => {
             Haptics.selectionAsync();
             setIsFasting(val);
@@ -280,6 +349,9 @@ export default function AddReadingScreen() {
             <Pressable
               key={tag.id}
               onPress={() => toggleTag(tag.id)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected }}
+              accessibilityLabel={tag.label}
               style={({ pressed }) => [
                 styles.tagChip,
                 {
@@ -318,6 +390,9 @@ export default function AddReadingScreen() {
           />
           <Pressable
             onPress={() => setPhotoUri(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Remove photo"
+            accessibilityHint="Removes the picture attached to this reading"
             style={[styles.removePhotoBtn, { backgroundColor: colors.error }]}
           >
             <Feather name="x" size={16} color="#FFFFFF" />
@@ -327,6 +402,9 @@ export default function AddReadingScreen() {
         <View style={styles.photoButtons}>
           <Pressable
             onPress={handlePickImage}
+            accessibilityRole="button"
+            accessibilityLabel="Choose a photo from the library"
+            accessibilityHint="Attaches a picture that stays on this device"
             style={({ pressed }) => [
               styles.photoBtn,
               {
@@ -342,6 +420,9 @@ export default function AddReadingScreen() {
           </Pressable>
           <Pressable
             onPress={handleTakePhoto}
+            accessibilityRole="button"
+            accessibilityLabel="Take a photo"
+            accessibilityHint="Uses the camera. The picture stays on this device"
             style={({ pressed }) => [
               styles.photoBtn,
               {
@@ -362,6 +443,7 @@ export default function AddReadingScreen() {
       <TextInput
         value={notes}
         onChangeText={setNotes}
+        accessibilityLabel="Notes"
         placeholder="Add any additional notes..."
         placeholderTextColor={theme.textSecondary}
         multiline
@@ -480,10 +562,23 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     marginBottom: Spacing.xl,
   },
+  whenHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  whenRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginBottom: Spacing.xl,
+  },
   tagChip: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.xs,
+    minHeight: MinTouchTarget,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
@@ -505,9 +600,9 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: Spacing.sm,
     right: Spacing.sm,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    borderRadius: MinTouchTarget / 2,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -522,6 +617,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
+    minHeight: MinTouchTarget,
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
   },

@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { ActivityIndicator, Pressable } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import HomeScreen from "@/screens/HomeScreen";
 import { HeaderTitle } from "@/components/HeaderTitle";
 import { useScreenOptions } from "@/hooks/useScreenOptions";
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import { MinTouchTarget } from "@/constants/theme";
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -35,8 +36,11 @@ function RefreshReadingsButton() {
       disabled={refreshing}
       accessibilityRole="button"
       accessibilityLabel="Refresh readings"
-      hitSlop={8}
-      style={({ pressed }) => ({ opacity: pressed || refreshing ? 0.7 : 1 })}
+      accessibilityHint="Reloads readings saved on this device"
+      style={({ pressed }) => [
+        styles.refreshButton,
+        { opacity: pressed || refreshing ? 0.7 : 1 },
+      ]}
     >
       {refreshing ? (
         <ActivityIndicator size="small" color={theme.text} />
@@ -63,3 +67,12 @@ export default function HomeStackNavigator() {
     </Stack.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  refreshButton: {
+    width: MinTouchTarget,
+    height: MinTouchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

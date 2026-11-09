@@ -45,6 +45,8 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
       {__DEV__ ? (
         <Pressable
           onPress={() => setIsModalVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Show error details"
           style={({ pressed }) => [
             styles.topButton,
             {
@@ -63,11 +65,15 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
         </ThemedText>
 
         <ThemedText type="body" style={styles.message}>
-          Please reload the app to continue.
+          Readings already saved on this device are still there. Reload the app
+          to continue.
         </ThemedText>
 
         <Pressable
           onPress={handleRestart}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+          accessibilityHint="Reloads the app"
           style={({ pressed }) => [
             styles.button,
             {
@@ -101,6 +107,8 @@ export function ErrorFallback({ error, resetError }: ErrorFallbackProps) {
                 </ThemedText>
                 <Pressable
                   onPress={() => setIsModalVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close error details"
                   style={({ pressed }) => [
                     styles.closeButton,
                     { opacity: pressed ? 0.6 : 1 },
@@ -224,7 +232,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   closeButton: {
-    padding: Spacing.xs,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalScrollView: {
     flex: 1,

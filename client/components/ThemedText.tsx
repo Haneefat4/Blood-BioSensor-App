@@ -22,6 +22,8 @@ export function ThemedText({
   lightColor,
   darkColor,
   type = "body",
+  maxFontSizeMultiplier,
+  allowFontScaling = true,
   ...rest
 }: ThemedTextProps) {
   const { theme, isDark } = useTheme();
@@ -41,6 +43,9 @@ export function ThemedText({
 
     return theme.text;
   };
+
+  const maxMultiplier =
+    type === "readingDisplay" ? 1.3 : type === "h1" ? 1.6 : undefined;
 
   const getTypeStyle = () => {
     switch (type) {
@@ -66,6 +71,11 @@ export function ThemedText({
   };
 
   return (
-    <Text style={[{ color: getColor() }, getTypeStyle(), style]} {...rest} />
+    <Text
+      allowFontScaling={allowFontScaling}
+      maxFontSizeMultiplier={maxFontSizeMultiplier ?? maxMultiplier}
+      style={[{ color: getColor() }, getTypeStyle(), style]}
+      {...rest}
+    />
   );
 }

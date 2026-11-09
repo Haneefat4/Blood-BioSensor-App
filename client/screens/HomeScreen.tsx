@@ -13,6 +13,7 @@ import { HeroCard } from "@/components/HeroCard";
 import { QuickStatCard } from "@/components/QuickStatCard";
 import { TrendChart } from "@/components/TrendChart";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
+import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { ReadingType } from "@/types";
@@ -93,6 +94,7 @@ export default function HomeScreen() {
         </View>
 
         <TrendChart readings={readings} type={primaryType} />
+        <ReferenceRangeNote />
       </ScrollView>
 
       <FloatingActionButton
