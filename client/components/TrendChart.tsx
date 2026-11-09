@@ -2,6 +2,7 @@ import React from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
+import { colorForSeverity } from "@/components/StatusBadge";
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { formatMeasurement } from "@/lib/units";
@@ -19,7 +20,7 @@ const CHART_WIDTH = SCREEN_WIDTH - Spacing.lg * 4;
 
 export function TrendChart({ readings, type }: TrendChartProps) {
   const { theme, isDark } = useTheme();
-  const { units, unitText } = useReadingDisplay();
+  const { units, unitText, assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const trendTitle = `7-Day Trend (${unitText(type)})`;
 
@@ -54,6 +55,7 @@ export function TrendChart({ readings, type }: TrendChartProps) {
     x: (i / (filteredReadings.length - 1)) * (CHART_WIDTH - Spacing.xl * 2),
     y: CHART_HEIGHT - ((r.value - minValue) / range) * (CHART_HEIGHT - 20) - 10,
     value: r.value,
+    color: colorForSeverity(assess(r).severity, colors),
   }));
 
   return (
@@ -91,7 +93,7 @@ export function TrendChart({ readings, type }: TrendChartProps) {
                 {
                   left: point.x + Spacing.lg,
                   top: point.y,
-                  backgroundColor: colors.primary,
+                  backgroundColor: point.color,
                 },
               ]}
             />

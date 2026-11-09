@@ -42,6 +42,8 @@ export function FloatingActionButton({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel="Add reading"
       style={[
         styles.container,
         {

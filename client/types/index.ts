@@ -6,6 +6,16 @@ export type ReadingType =
 
 export type ReadingStatus = "normal" | "warning" | "critical";
 
+/** Used only to pick a hemoglobin reference interval. */
+export type ReferenceSex = "female" | "male" | "unspecified";
+
+export function normalizeReferenceSex(value: unknown): ReferenceSex {
+  if (value === "female" || value === "male" || value === "unspecified") {
+    return value;
+  }
+  return "unspecified";
+}
+
 export type ReadingTag =
   | "fasting"
   | "after_meal"
@@ -32,6 +42,11 @@ export interface Reading {
   unit: string;
   timestamp: number;
   notes?: string;
+  /**
+   * Severity recorded when the reading was saved. Home, History, charts,
+   * and exports recompute status from client/lib/referenceRanges.ts so a
+   * later range change still applies. Do not read this field in the UI.
+   */
   status: ReadingStatus;
   isFasting?: boolean;
   tags?: ReadingTag[];
@@ -58,70 +73,55 @@ export interface UserPreferences {
   displayName: string;
   avatarIndex: number;
   units: "mg/dL" | "mmol/L";
+  /**
+   * Hemoglobin interval only. Female and male use typical adult ranges.
+   * Unspecified uses a combined adult range. Other reading types ignore it.
+   */
+  referenceSex: ReferenceSex;
   darkMode: "system" | "light" | "dark";
   notificationsEnabled: boolean;
   reminderSettings?: ReminderSettings;
 }
 
+/**
+ * Labels, icons, and canonical storage units.
+ * Status bands and input limits live in client/lib/referenceRanges.ts.
+ */
 export const READING_CONFIG: Record<
   ReadingType,
   {
     label: string;
     icon: string;
     defaultUnit: string;
-    normalRange: { min: number; max: number };
-    warningRange: { min: number; max: number };
   }
 > = {
   glucose: {
     label: "Glucose",
     icon: "droplet",
     defaultUnit: "mg/dL",
-    normalRange: { min: 70, max: 100 },
-    warningRange: { min: 60, max: 140 },
   },
   hemoglobin: {
     label: "Hemoglobin",
     icon: "heart",
     defaultUnit: "g/dL",
-    normalRange: { min: 12, max: 17 },
-    warningRange: { min: 10, max: 19 },
   },
   cholesterol: {
     label: "Cholesterol",
     icon: "activity",
     defaultUnit: "mg/dL",
-    normalRange: { min: 0, max: 200 },
-    warningRange: { min: 0, max: 240 },
   },
   platelets: {
     label: "Platelets",
     icon: "trending-up",
     defaultUnit: "K/uL",
-    normalRange: { min: 150, max: 400 },
-    warningRange: { min: 100, max: 450 },
   },
 };
-
-/** `value` must already be in the canonical unit for `type` (see client/lib/units.ts). */
-export function getReadingStatus(
-  type: ReadingType,
-  value: number,
-): ReadingStatus {
-  const config = READING_CONFIG[type];
-  if (value >= config.normalRange.min && value <= config.normalRange.max) {
-    return "normal";
-  }
-  if (value >= config.warningRange.min && value <= config.warningRange.max) {
-    return "warning";
-  }
-  return "critical";
-}
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   displayName: "User",
   avatarIndex: 0,
   units: "mg/dL",
+  referenceSex: "unspecified",
   darkMode: "system",
   notificationsEnabled: false,
   reminderSettings: {

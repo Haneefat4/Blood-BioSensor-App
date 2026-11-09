@@ -8,8 +8,8 @@ export type UnitSystem = "mg/dL" | "mmol/L";
  * types this preference converts. Hemoglobin (g/dL) and platelets (K/uL)
  * are stored and shown unchanged.
  *
- * Status ranges in READING_CONFIG stay in the canonical unit and are not
- * rewritten here.
+ * Status ranges stay in the canonical unit in client/lib/referenceRanges.ts
+ * and are not rewritten here. Convert before scoring a reading.
  */
 const MGDL_PER_MMOL: Partial<Record<ReadingType, number>> = {
   glucose: 18.016,
@@ -68,17 +68,10 @@ export function formatMeasurement(
   type: ReadingType,
   canonicalValue: number,
   system: UnitSystem,
+  options?: { keepDecimals?: boolean },
 ): string {
   const display = toDisplayValue(type, canonicalValue, system);
-  const rounded = Number(display.toFixed(decimalsFor(type, system)));
-  return rounded.toString();
-}
-
-export function formatNormalRange(
-  type: ReadingType,
-  system: UnitSystem,
-): string {
-  const { min, max } = READING_CONFIG[type].normalRange;
-  const unit = displayUnitFor(type, system);
-  return `${formatMeasurement(type, min, system)} - ${formatMeasurement(type, max, system)} ${unit}`;
+  const fixed = display.toFixed(decimalsFor(type, system));
+  if (options?.keepDecimals) return fixed;
+  return Number(fixed).toString();
 }

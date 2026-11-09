@@ -30,9 +30,10 @@ export function ReadingListItem({
   onDelete,
 }: ReadingListItemProps) {
   const { theme, isDark } = useTheme();
-  const { valueText, unitText } = useReadingDisplay();
+  const { valueText, unitText, assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[reading.type];
+  const assessment = assess(reading);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -101,7 +102,7 @@ export function ReadingListItem({
               </View>
             ) : null}
           </View>
-          <StatusBadge status={reading.status} />
+          <StatusBadge status={assessment.severity} label={assessment.label} />
         </View>
         <View style={styles.bottomRow}>
           <View style={styles.valueContainer}>

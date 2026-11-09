@@ -9,34 +9,48 @@ import type { ReadingStatus } from "@/types";
 
 interface StatusBadgeProps {
   status: ReadingStatus;
+  /** Plain label such as Low, High, or Elevated. Falls back to a short severity word. */
+  label?: string;
   showLabel?: boolean;
 }
 
 const STATUS_CONFIG = {
   normal: { label: "Normal", icon: "check-circle" as const },
-  warning: { label: "Warning", icon: "alert-circle" as const },
-  critical: { label: "Critical", icon: "alert-triangle" as const },
+  warning: { label: "Out of range", icon: "alert-circle" as const },
+  critical: { label: "Far out of range", icon: "alert-triangle" as const },
 };
 
-export function StatusBadge({ status, showLabel = true }: StatusBadgeProps) {
+export function colorForSeverity(
+  severity: ReadingStatus,
+  palette: { success: string; warning: string; error: string },
+): string {
+  if (severity === "normal") return palette.success;
+  if (severity === "warning") return palette.warning;
+  return palette.error;
+}
+
+export function StatusBadge({
+  status,
+  label,
+  showLabel = true,
+}: StatusBadgeProps) {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-
-  const statusColor =
-    status === "normal"
-      ? colors.success
-      : status === "warning"
-        ? colors.warning
-        : colors.error;
-
+  const statusColor = colorForSeverity(status, colors);
   const config = STATUS_CONFIG[status];
+  const text = label ?? config.label;
 
   return (
-    <View style={[styles.container, { backgroundColor: statusColor + "1A" }]}>
+    <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={text}
+      style={[styles.container, { backgroundColor: statusColor + "1A" }]}
+    >
       <Feather name={config.icon} size={14} color={statusColor} />
       {showLabel ? (
         <ThemedText style={[styles.label, { color: statusColor }]}>
-          {config.label}
+          {text}
         </ThemedText>
       ) : null}
     </View>
@@ -45,6 +59,7 @@ export function StatusBadge({ status, showLabel = true }: StatusBadgeProps) {
 
 const styles = StyleSheet.create({
   container: {
+    flexShrink: 0,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.sm,

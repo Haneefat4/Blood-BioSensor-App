@@ -13,6 +13,7 @@
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix",
     "check:types": "tsc --noEmit",
+    "test": "tsx --test client/lib/referenceRanges.test.ts client/lib/readingValue.test.ts",
     "check:format": "prettier --check \"**/*.{js,ts,tsx,css,json}\"",
     "format": "prettier --write \"**/*.{js,ts,tsx,css,json}\""
   },

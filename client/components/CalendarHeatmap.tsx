@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
 import type { Reading } from "@/types";
 
@@ -21,6 +22,7 @@ export function CalendarHeatmap({
   onDayPress,
 }: CalendarHeatmapProps) {
   const { theme, isDark } = useTheme();
+  const { assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
 
   const { weeks, monthLabels } = useMemo(() => {
@@ -71,8 +73,12 @@ export function CalendarHeatmap({
 
   const getStatusColor = (dayReadings: Reading[]): string => {
     if (dayReadings.length === 0) return theme.backgroundSecondary;
-    const hasCritical = dayReadings.some((r) => r.status === "critical");
-    const hasWarning = dayReadings.some((r) => r.status === "warning");
+    const hasCritical = dayReadings.some(
+      (reading) => assess(reading).severity === "critical",
+    );
+    const hasWarning = dayReadings.some(
+      (reading) => assess(reading).severity === "warning",
+    );
     if (hasCritical) return colors.error + "80";
     if (hasWarning) return colors.warning + "80";
     return colors.success + "80";

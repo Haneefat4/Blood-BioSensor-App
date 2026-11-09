@@ -25,9 +25,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
   const { theme, isDark } = useTheme();
-  const { valueText, unitText } = useReadingDisplay();
+  const { valueText, unitText, assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const config = READING_CONFIG[type];
+  const assessment = reading ? assess(reading) : undefined;
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -62,8 +63,12 @@ export function QuickStatCard({ reading, type, onPress }: QuickStatCardProps) {
         >
           <Feather name={config.icon as any} size={16} color={colors.primary} />
         </View>
-        {reading ? (
-          <StatusBadge status={reading.status} showLabel={false} />
+        {assessment ? (
+          <StatusBadge
+            status={assessment.severity}
+            label={assessment.label}
+            showLabel={false}
+          />
         ) : null}
       </View>
       <ThemedText style={[styles.label, { color: theme.textSecondary }]}>

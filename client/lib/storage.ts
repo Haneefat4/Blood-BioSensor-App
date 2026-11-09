@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Reading, UserPreferences, Medication } from "@/types";
-import { DEFAULT_USER_PREFERENCES } from "@/types";
+import { DEFAULT_USER_PREFERENCES, normalizeReferenceSex } from "@/types";
 import { cancelScheduledReminders } from "@/lib/reminders";
 
 const READINGS_KEY = "@blood_biosensor_readings";
@@ -42,9 +42,13 @@ export async function deleteReading(id: string): Promise<void> {
 export async function getUserPreferences(): Promise<UserPreferences> {
   try {
     const data = await AsyncStorage.getItem(PREFERENCES_KEY);
-    return data
-      ? { ...DEFAULT_USER_PREFERENCES, ...JSON.parse(data) }
-      : DEFAULT_USER_PREFERENCES;
+    if (!data) return DEFAULT_USER_PREFERENCES;
+    const parsed = JSON.parse(data) as Partial<UserPreferences>;
+    return {
+      ...DEFAULT_USER_PREFERENCES,
+      ...parsed,
+      referenceSex: normalizeReferenceSex(parsed.referenceSex),
+    };
   } catch (error) {
     console.error("Error loading preferences:", error);
     return DEFAULT_USER_PREFERENCES;

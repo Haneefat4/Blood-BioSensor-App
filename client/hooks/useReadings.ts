@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import type { Reading, ReadingType, ReadingTag } from "@/types";
+import type { Reading, ReadingType, ReadingTag, ReferenceSex } from "@/types";
 import { getReadings, saveReading, deleteReading } from "@/lib/storage";
-import { getReadingStatus, READING_CONFIG } from "@/types";
+import { assessReading } from "@/lib/referenceRanges";
+import { READING_CONFIG } from "@/types";
 
 export interface AddReadingOptions {
   notes?: string;
   isFasting?: boolean;
   tags?: ReadingTag[];
   photoUri?: string;
+  /** Hemoglobin band at save time. Screens still recompute on display. */
+  referenceSex?: ReferenceSex;
 }
 
 export function useReadings() {
@@ -33,7 +36,8 @@ export function useReadings() {
   const addReading = useCallback(
     async (type: ReadingType, value: number, options?: AddReadingOptions) => {
       const config = READING_CONFIG[type];
-      // Callers pass the canonical unit. Status uses the unchanged ranges.
+      // Callers pass the canonical unit. The stored severity is a snapshot;
+      // every screen recomputes from referenceRanges when it renders.
       const newReading: Reading = {
         id: Date.now().toString(),
         type,
@@ -41,7 +45,12 @@ export function useReadings() {
         unit: config.defaultUnit,
         timestamp: Date.now(),
         notes: options?.notes,
-        status: getReadingStatus(type, value),
+        status: assessReading({
+          type,
+          canonicalValue: value,
+          isFasting: options?.isFasting,
+          sex: options?.referenceSex,
+        }).severity,
         isFasting: options?.isFasting,
         tags: options?.tags,
         photoUri: options?.photoUri,
