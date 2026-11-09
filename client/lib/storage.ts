@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Reading, UserPreferences, Medication } from "@/types";
 import { DEFAULT_USER_PREFERENCES } from "@/types";
+import { cancelScheduledReminders } from "@/lib/reminders";
 
 const READINGS_KEY = "@blood_biosensor_readings";
 const PREFERENCES_KEY = "@blood_biosensor_preferences";
@@ -109,6 +110,7 @@ export async function deleteMedication(id: string): Promise<void> {
 
 export async function clearAllData(): Promise<void> {
   try {
+    await cancelScheduledReminders();
     await AsyncStorage.multiRemove([
       READINGS_KEY,
       PREFERENCES_KEY,

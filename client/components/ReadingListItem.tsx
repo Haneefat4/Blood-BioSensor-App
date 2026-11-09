@@ -1,6 +1,7 @@
 import React from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -138,6 +139,14 @@ export function ReadingListItem({
             {reading.notes}
           </ThemedText>
         ) : null}
+        {reading.photoUri ? (
+          <Image
+            source={{ uri: reading.photoUri }}
+            style={styles.thumbnail}
+            contentFit="cover"
+            accessibilityLabel="Attached reading photo"
+          />
+        ) : null}
       </View>
       {onDelete ? (
         <Pressable
@@ -240,6 +249,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: Spacing.xs,
     fontStyle: "italic",
+  },
+  thumbnail: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.xs,
+    marginTop: Spacing.sm,
   },
   deleteButton: {
     padding: Spacing.sm,

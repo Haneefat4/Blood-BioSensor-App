@@ -1,5 +1,5 @@
-import React from "react";
-import { View, ScrollView, StyleSheet } from "react-native";
+import React, { useState } from "react";
+import { View, ScrollView, StyleSheet, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -32,7 +32,18 @@ export default function HomeScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const { readings, getLatestByType, getLatestReading } = useReadingsContext();
+  const { readings, getLatestByType, getLatestReading, refresh } =
+    useReadingsContext();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const latestReading = getLatestReading();
   const primaryType = latestReading?.type || "glucose";
@@ -48,6 +59,14 @@ export default function HomeScreen() {
         }}
         scrollIndicatorInsets={{ bottom: insets.bottom }}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
       >
         <HeroCard reading={latestReading} />
 

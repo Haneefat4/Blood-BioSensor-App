@@ -6,7 +6,9 @@ import {
   Alert,
   Share,
   Platform,
+  Pressable,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
@@ -14,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as Notifications from "expo-notifications";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
@@ -27,8 +30,20 @@ import { useReadingsContext } from "@/context/ReadingsContext";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
 import { displayUnitFor, formatMeasurement } from "@/lib/units";
+import { syncScheduledReminders } from "@/lib/reminders";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 import { READING_CONFIG, READING_TAGS } from "@/types";
+import type { UserPreferences } from "@/types";
+
+const APPEARANCE_OPTIONS: {
+  value: UserPreferences["darkMode"];
+  label: string;
+  icon: keyof typeof Feather.glyphMap;
+}[] = [
+  { value: "system", label: "System", icon: "smartphone" },
+  { value: "light", label: "Light", icon: "sun" },
+  { value: "dark", label: "Dark", icon: "moon" },
+];
 
 type ProfileNav = NativeStackNavigationProp<ProfileStackParamList, "Profile">;
 
@@ -205,6 +220,31 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleNotificationsChange = async (value: boolean) => {
+    if (
+      value &&
+      preferences.reminderSettings?.enabled &&
+      Platform.OS !== "web"
+    ) {
+      const existing = await Notifications.getPermissionsAsync();
+      let status = existing.status;
+      if (status !== "granted") {
+        status = (await Notifications.requestPermissionsAsync()).status;
+      }
+      if (status !== "granted") {
+        Alert.alert(
+          "Notifications Disabled",
+          "Allow notifications to restore your measurement reminders.",
+        );
+        return;
+      }
+    }
+
+    const next = { ...preferences, notificationsEnabled: value };
+    await updatePreferences({ notificationsEnabled: value });
+    await syncScheduledReminders(next);
+  };
+
   const handleClearData = () => {
     Alert.alert(
       "Clear All Data",
@@ -343,10 +383,49 @@ export default function ProfileScreen() {
           label="Notifications"
           isSwitch
           switchValue={preferences.notificationsEnabled}
-          onSwitchChange={(value) =>
-            updatePreferences({ notificationsEnabled: value })
-          }
+          onSwitchChange={handleNotificationsChange}
         />
+      </View>
+
+      <View
+        style={[styles.section, { backgroundColor: theme.backgroundDefault }]}
+      >
+        <ThemedText style={styles.sectionTitle}>Display</ThemedText>
+        <View style={styles.appearanceRow}>
+          {APPEARANCE_OPTIONS.map((option) => {
+            const selected = preferences.darkMode === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => updatePreferences({ darkMode: option.value })}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                style={[
+                  styles.appearanceOption,
+                  {
+                    backgroundColor: selected
+                      ? colors.primary
+                      : theme.backgroundSecondary,
+                  },
+                ]}
+              >
+                <Feather
+                  name={option.icon}
+                  size={16}
+                  color={selected ? "#FFFFFF" : theme.text}
+                />
+                <ThemedText
+                  style={[
+                    styles.appearanceLabel,
+                    { color: selected ? "#FFFFFF" : theme.text },
+                  ]}
+                >
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       <View
@@ -360,7 +439,11 @@ export default function ProfileScreen() {
           showChevron={false}
         />
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
-        <SettingsRow icon="shield" label="Privacy Policy" onPress={() => {}} />
+        <SettingsRow
+          icon="shield"
+          label="Privacy Policy"
+          onPress={() => navigation.navigate("PrivacyPolicy")}
+        />
       </View>
 
       <View style={styles.dangerSection}>
@@ -409,6 +492,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: -Spacing.xs,
     marginBottom: Spacing.sm,
+  },
+  appearanceRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  appearanceOption: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  appearanceLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   dangerSection: {
     marginTop: Spacing.xl,

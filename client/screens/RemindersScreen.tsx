@@ -20,6 +20,8 @@ import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { usePreferencesContext } from "@/context/PreferencesContext";
+import { normalizeTime, sortTimes } from "@/lib/reminderTimes";
+import { syncScheduledReminders } from "@/lib/reminders";
 import type { ReadingType } from "@/types";
 import { READING_CONFIG } from "@/types";
 
@@ -29,16 +31,6 @@ const READING_TYPES: ReadingType[] = [
   "cholesterol",
   "platelets",
 ];
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 export default function RemindersScreen() {
   const insets = useSafeAreaInsets();
@@ -51,8 +43,8 @@ export default function RemindersScreen() {
   const [enabled, setEnabled] = useState(
     preferences.reminderSettings?.enabled || false,
   );
-  const [times, setTimes] = useState<string[]>(
-    preferences.reminderSettings?.times || ["09:00", "21:00"],
+  const [times, setTimes] = useState<string[]>(() =>
+    sortTimes(preferences.reminderSettings?.times || ["09:00", "21:00"]),
   );
   const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>(
     preferences.reminderSettings?.types || ["glucose"],
@@ -62,6 +54,14 @@ export default function RemindersScreen() {
   useEffect(() => {
     checkPermission();
   }, []);
+
+  useEffect(() => {
+    const settings = preferences.reminderSettings;
+    if (!settings) return;
+    setEnabled(settings.enabled);
+    setTimes(sortTimes(settings.times));
+    setSelectedTypes(settings.types);
+  }, [preferences.reminderSettings]);
 
   const checkPermission = async () => {
     if (Platform.OS === "web") {
@@ -99,19 +99,19 @@ export default function RemindersScreen() {
   };
 
   const addTime = () => {
-    const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-    if (!timeRegex.test(newTime)) {
+    const normalized = normalizeTime(newTime);
+    if (!normalized) {
       Alert.alert(
         "Invalid Time",
         "Please enter time in HH:MM format (e.g., 09:00 or 21:30).",
       );
       return;
     }
-    if (times.includes(newTime)) {
+    if (times.includes(normalized)) {
       Alert.alert("Duplicate", "This time is already added.");
       return;
     }
-    setTimes((prev) => [...prev, newTime].sort());
+    setTimes((prev) => sortTimes([...prev, normalized]));
     setNewTime("");
     Haptics.selectionAsync();
   };
@@ -127,48 +127,28 @@ export default function RemindersScreen() {
       return;
     }
 
-    await updatePreferences({
+    const normalizedTimes = sortTimes(times);
+    const turningRemindersOn =
+      enabled && !preferences.reminderSettings?.enabled;
+    const next = {
+      ...preferences,
+      notificationsEnabled: turningRemindersOn
+        ? true
+        : preferences.notificationsEnabled,
       reminderSettings: {
         enabled,
-        times,
+        times: normalizedTimes,
         types: selectedTypes,
       },
+    };
+    await updatePreferences({
+      notificationsEnabled: next.notificationsEnabled,
+      reminderSettings: next.reminderSettings,
     });
-
-    if (enabled && hasPermission) {
-      await scheduleNotifications();
-    } else {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-    }
+    await syncScheduledReminders(next);
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     Alert.alert("Saved", "Your reminder settings have been saved.");
-  };
-
-  const scheduleNotifications = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    if (!enabled || times.length === 0) return;
-
-    for (const time of times) {
-      const [hours, minutes] = time.split(":").map(Number);
-      const typeLabels = selectedTypes
-        .map((t) => READING_CONFIG[t].label)
-        .join(", ");
-
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Time to Record Your Reading",
-          body: `Don't forget to log your ${typeLabels} reading.`,
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: hours,
-          minute: minutes,
-        },
-      });
-    }
   };
 
   return (
@@ -207,6 +187,16 @@ export default function RemindersScreen() {
           />
         </View>
 
+        {preferences.reminderSettings?.enabled &&
+        !preferences.notificationsEnabled ? (
+          <ThemedText
+            style={[styles.pausedText, { color: theme.textSecondary }]}
+          >
+            Reminders are paused while notifications are off. Turn notifications
+            on in Profile to restore this schedule.
+          </ThemedText>
+        ) : null}
+
         {!hasPermission && enabled ? (
           <Pressable
             onPress={requestPermission}
@@ -231,7 +221,7 @@ export default function RemindersScreen() {
       >
         <ThemedText style={styles.sectionTitle}>Reminder Times</ThemedText>
         <View style={styles.timesContainer}>
-          {times.map((time) => (
+          {sortTimes(times).map((time) => (
             <View
               key={time}
               style={[
@@ -371,6 +361,10 @@ const styles = StyleSheet.create({
   permissionBtnText: {
     color: "#FFFFFF",
     fontWeight: "600",
+  },
+  pausedText: {
+    fontSize: 14,
+    marginTop: Spacing.md,
   },
   timesContainer: {
     flexDirection: "row",

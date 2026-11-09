@@ -49,9 +49,7 @@ export function FloatingActionButton({
           bottom: bottomOffset,
         },
         Platform.OS === "ios" ? Shadows.fab : null,
-        Platform.OS === "android"
-          ? { elevation: Shadows.fab.elevation }
-          : null,
+        Platform.OS === "android" ? { elevation: Shadows.fab.elevation } : null,
         animatedStyle,
       ]}
     >
