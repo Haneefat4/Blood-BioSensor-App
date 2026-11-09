@@ -5,7 +5,11 @@ import type { UserPreferences } from "@/types";
 interface PreferencesContextType {
   preferences: UserPreferences;
   isLoading: boolean;
-  updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
+  updatePreferences: (
+    updates:
+      | Partial<UserPreferences>
+      | ((current: UserPreferences) => Partial<UserPreferences> | null),
+  ) => Promise<UserPreferences>;
   refresh: () => Promise<void>;
 }
 

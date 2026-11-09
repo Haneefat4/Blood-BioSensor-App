@@ -7,6 +7,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
 import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { BorderRadius, Spacing, Colors } from "@/constants/theme";
+import { buildHeatmapWeeks } from "@/lib/calendarHeatmap";
+import { localDateKey } from "@/lib/readingOrder";
 import type { Reading, ReadingStatus } from "@/types";
 
 interface CalendarHeatmapProps {
@@ -15,7 +17,6 @@ interface CalendarHeatmapProps {
 }
 
 const DAYS_OF_WEEK = ["S", "M", "T", "W", "T", "F", "S"];
-const WEEKS_TO_SHOW = 12;
 
 export function CalendarHeatmap({
   readings,
@@ -25,51 +26,39 @@ export function CalendarHeatmap({
   const { assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
 
+  const todayKey = localDateKey(Date.now());
   const { weeks, monthLabels } = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const startDate = new Date(today);
-    startDate.setDate(today.getDate() - WEEKS_TO_SHOW * 7 + 1);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-
     const readingsByDate = new Map<string, Reading[]>();
     readings.forEach((reading) => {
-      const dateKey = new Date(reading.timestamp).toDateString();
+      const dateKey = localDateKey(reading.timestamp);
       const existing = readingsByDate.get(dateKey) || [];
       existing.push(reading);
       readingsByDate.set(dateKey, existing);
     });
 
-    const weeksArr: { date: Date; readings: Reading[]; isToday: boolean }[][] =
-      [];
     const labels: { week: number; label: string }[] = [];
-    let currentDate = new Date(startDate);
     let lastMonth = -1;
-
-    for (let w = 0; w < WEEKS_TO_SHOW; w++) {
-      const week: { date: Date; readings: Reading[]; isToday: boolean }[] = [];
-      for (let d = 0; d < 7; d++) {
-        const date = new Date(currentDate);
-        const dateKey = date.toDateString();
-        const dayReadings = readingsByDate.get(dateKey) || [];
-        const isToday = date.toDateString() === today.toDateString();
-
+    const weeksArr = buildHeatmapWeeks(new Date()).map((week, weekIndex) =>
+      week.map((date) => {
+        const dateKey = localDateKey(date);
         if (date.getMonth() !== lastMonth && date.getDate() <= 7) {
           labels.push({
-            week: w,
+            week: weekIndex,
             label: date.toLocaleDateString(undefined, { month: "short" }),
           });
           lastMonth = date.getMonth();
         }
-
-        week.push({ date, readings: dayReadings, isToday });
-        currentDate.setDate(currentDate.getDate() + 1);
-      }
-      weeksArr.push(week);
-    }
+        return {
+          date,
+          readings: readingsByDate.get(dateKey) || [],
+          isToday: dateKey === todayKey,
+          isFuture: dateKey > todayKey,
+        };
+      }),
+    );
 
     return { weeks: weeksArr, monthLabels: labels };
-  }, [readings]);
+  }, [readings, todayKey]);
 
   const strongest = (dayReadings: Reading[]): ReadingStatus | "empty" => {
     if (dayReadings.length === 0) return "empty";
@@ -84,14 +73,22 @@ export function CalendarHeatmap({
     return "normal";
   };
 
-  const describeDay = (day: { date: Date; readings: Reading[] }): string => {
+  const describeDay = (day: {
+    date: Date;
+    readings: Reading[];
+    isFuture: boolean;
+  }): string => {
     const dateLabel = day.date.toLocaleDateString(undefined, {
       weekday: "long",
       month: "long",
       day: "numeric",
     });
     const level = strongest(day.readings);
-    if (level === "empty") return `${dateLabel}. No readings.`;
+    if (level === "empty") {
+      return day.isFuture
+        ? `${dateLabel}. No readings yet.`
+        : `${dateLabel}. No readings.`;
+    }
     const count = `${day.readings.length} reading${day.readings.length === 1 ? "" : "s"}`;
     if (level === "critical") {
       return `${dateLabel}. ${count}. Includes a reading far outside the usual range.`;

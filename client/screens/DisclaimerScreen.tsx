@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 
 import { Button } from "@/components/Button";
 import { ThemedText } from "@/components/ThemedText";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { NOT_MEDICAL_ADVICE } from "@/content/legalCopy";
 import { useTheme } from "@/hooks/useTheme";
 import {
@@ -24,6 +25,7 @@ export function DisclaimerScreen({ onAccept }: DisclaimerScreenProps) {
   const colors = isDark ? Colors.dark : Colors.light;
   const [checked, setChecked] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { notify } = useFeedback();
 
   const handleContinue = async () => {
     if (!checked || saving) return;
@@ -31,10 +33,11 @@ export function DisclaimerScreen({ onAccept }: DisclaimerScreenProps) {
     try {
       await onAccept();
     } catch {
-      Alert.alert(
-        "Could not save",
-        "The acknowledgement could not be saved on this device. Please try again.",
-      );
+      notify({
+        tone: "error",
+        message:
+          "The acknowledgement could not be saved on this device. Please try again.",
+      });
       setSaving(false);
     }
   };

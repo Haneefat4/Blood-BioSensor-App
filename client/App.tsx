@@ -12,6 +12,7 @@ import { StatusBar } from "expo-status-bar";
 
 import RootStackNavigator from "@/navigation/RootStackNavigator";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FeedbackProvider } from "@/components/FeedbackProvider";
 import { DisclaimerScreen } from "@/screens/DisclaimerScreen";
 import { ReadingsProvider } from "@/context/ReadingsContext";
 import {
@@ -19,6 +20,10 @@ import {
   usePreferencesContext,
 } from "@/context/PreferencesContext";
 import { MedicationsProvider } from "@/context/MedicationsContext";
+import {
+  notificationFlagsMatch,
+  withLinkedNotifications,
+} from "@/lib/notificationPrefs";
 import {
   configureNotificationHandler,
   syncScheduledReminders,
@@ -30,9 +35,26 @@ import { DEFAULT_USER_PREFERENCES } from "@/types";
 configureNotificationHandler();
 
 function ReminderSync() {
-  const { preferences, isLoading } = usePreferencesContext();
+  const { preferences, isLoading, updatePreferences } = usePreferencesContext();
   const notificationsEnabled = preferences.notificationsEnabled;
   const reminderSettings = preferences.reminderSettings;
+
+  useEffect(() => {
+    if (isLoading || notificationFlagsMatch(preferences)) return;
+    updatePreferences((current) => {
+      if (notificationFlagsMatch(current)) return null;
+      const linked = withLinkedNotifications(
+        current,
+        current.notificationsEnabled,
+      );
+      return {
+        notificationsEnabled: linked.notificationsEnabled,
+        reminderSettings: linked.reminderSettings,
+      };
+    }).catch((error) => {
+      console.error("Error linking notification settings:", error);
+    });
+  }, [isLoading, preferences, updatePreferences]);
 
   useEffect(() => {
     if (isLoading) return;
@@ -131,7 +153,9 @@ export default function App() {
             <ReadingsProvider>
               <PreferencesProvider>
                 <MedicationsProvider>
-                  <AppShell />
+                  <FeedbackProvider>
+                    <AppShell />
+                  </FeedbackProvider>
                 </MedicationsProvider>
               </PreferencesProvider>
             </ReadingsProvider>

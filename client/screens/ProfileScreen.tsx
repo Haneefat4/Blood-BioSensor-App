@@ -4,7 +4,6 @@ import {
   View,
   StyleSheet,
   TextInput,
-  Alert,
   Platform,
   Pressable,
 } from "react-native";
@@ -14,12 +13,11 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import * as Notifications from "expo-notifications";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import { useTheme } from "@/hooks/useTheme";
+import { useNotificationToggle } from "@/hooks/useNotificationToggle";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { AvatarSelector } from "@/components/AvatarSelector";
@@ -30,8 +28,11 @@ import { useReadingsContext } from "@/context/ReadingsContext";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
 import { buildReadingsCsv, buildReadingsPdfHtml } from "@/lib/exportFormat";
-import { isShareCancelled, shareTextFile } from "@/lib/shareFile";
-import { syncScheduledReminders } from "@/lib/reminders";
+import {
+  isShareCancelled,
+  sharePdfReport,
+  shareTextFile,
+} from "@/lib/shareFile";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 import type { ReferenceSex, UserPreferences } from "@/types";
 
@@ -68,6 +69,9 @@ export default function ProfileScreen() {
   } = usePreferencesContext();
   const { readings, refresh: refreshReadings } = useReadingsContext();
   const { refresh: refreshMedications } = useMedicationsContext();
+  const { notify, confirm } = useFeedback();
+  const { enabled: notificationsOn, setEnabled: setNotifications } =
+    useNotificationToggle();
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(preferences.displayName);
   const [isExporting, setIsExporting] = useState(false);
@@ -89,7 +93,7 @@ export default function ProfileScreen() {
 
   const handleExportCSV = async () => {
     if (readings.length === 0) {
-      Alert.alert("No Data", "There are no readings to export.");
+      notify("There are no readings to export.");
       return;
     }
 
@@ -101,9 +105,15 @@ export default function ProfileScreen() {
       });
       const day = new Date().toISOString().slice(0, 10);
       await shareTextFile(`blood-biosensor-log-${day}.csv`, csv, "text/csv");
+      if (Platform.OS === "web") {
+        notify({ tone: "success", message: "CSV downloaded." });
+      }
     } catch (error) {
       if (!isShareCancelled(error)) {
-        Alert.alert("Error", "Failed to export data.");
+        notify({
+          tone: "error",
+          message: "Could not export the CSV. Please try again.",
+        });
       }
     } finally {
       setIsExporting(false);
@@ -112,7 +122,7 @@ export default function ProfileScreen() {
 
   const handleExportPDF = async () => {
     if (readings.length === 0) {
-      Alert.alert("No Data", "There are no readings to export.");
+      notify("There are no readings to export.");
       return;
     }
 
@@ -124,76 +134,56 @@ export default function ProfileScreen() {
         units: preferences.units,
         sex: preferences.referenceSex,
       });
-
-      const { uri } = await Print.printToFileAsync({ html });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Share Blood Biosensor log",
-          UTI: "com.adobe.pdf",
-        });
-      } else {
-        Alert.alert("Success", "PDF saved to: " + uri);
+      const day = new Date().toISOString().slice(0, 10);
+      const result = await sharePdfReport(
+        `blood-biosensor-log-${day}.pdf`,
+        html,
+      );
+      if (result === "printed") {
+        notify(
+          "Your report opened in a new tab. Choose Save as PDF in the print dialog.",
+        );
+      } else if (result === "html") {
+        notify(
+          "The report tab was blocked, so the report downloaded as HTML. Open that file, then choose Print and Save as PDF.",
+        );
       }
     } catch (error) {
       if (!isShareCancelled(error)) {
-        Alert.alert("Error", "Failed to generate PDF.");
+        notify({
+          tone: "error",
+          message: "Could not create the PDF. Please try again.",
+        });
       }
     } finally {
       setIsExporting(false);
     }
   };
 
-  const handleNotificationsChange = async (value: boolean) => {
-    if (
-      value &&
-      preferences.reminderSettings?.enabled &&
-      Platform.OS !== "web"
-    ) {
-      const existing = await Notifications.getPermissionsAsync();
-      let status = existing.status;
-      if (status !== "granted") {
-        status = (await Notifications.requestPermissionsAsync()).status;
-      }
-      if (status !== "granted") {
-        Alert.alert(
-          "Notifications Disabled",
-          "Allow notifications to restore your measurement reminders.",
-        );
-        return;
-      }
+  const handleClearData = async () => {
+    const confirmed = await confirm({
+      title: "Clear All Data",
+      message:
+        "This will permanently delete all your readings, medications, and preferences. This action cannot be undone.",
+      confirmLabel: "Clear Data",
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    try {
+      await clearAllData();
+      await Promise.all([
+        refreshPreferences(),
+        refreshReadings(),
+        refreshMedications(),
+      ]);
+      notify({ tone: "success", message: "All data has been cleared." });
+    } catch {
+      notify({
+        tone: "error",
+        message: "Could not clear data. Please try again.",
+      });
     }
-
-    const next = { ...preferences, notificationsEnabled: value };
-    await updatePreferences({ notificationsEnabled: value });
-    await syncScheduledReminders(next);
-  };
-
-  const handleClearData = () => {
-    Alert.alert(
-      "Clear All Data",
-      "This will permanently delete all your readings, medications, and preferences. This action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear Data",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearAllData();
-              await Promise.all([
-                refreshPreferences(),
-                refreshReadings(),
-                refreshMedications(),
-              ]);
-              Alert.alert("Success", "All data has been cleared.");
-            } catch {
-              Alert.alert("Error", "Failed to clear data. Please try again.");
-            }
-          },
-        },
-      ],
-    );
   };
 
   if (isLoading) {
@@ -360,8 +350,8 @@ export default function ProfileScreen() {
           icon="bell"
           label="Notifications"
           isSwitch
-          switchValue={preferences.notificationsEnabled}
-          onSwitchChange={handleNotificationsChange}
+          switchValue={notificationsOn}
+          onSwitchChange={setNotifications}
         />
       </View>
 

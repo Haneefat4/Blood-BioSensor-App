@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
+import type { CompositeNavigationProp } from "@react-navigation/native";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { useTheme } from "@/hooks/useTheme";
@@ -15,10 +17,18 @@ import { TrendChart } from "@/components/TrendChart";
 import { FloatingActionButton } from "@/components/FloatingActionButton";
 import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
 import { useReadingsContext } from "@/context/ReadingsContext";
+import type { HomeStackParamList } from "@/navigation/HomeStackNavigator";
+import type { MainTabParamList } from "@/navigation/MainTabNavigator";
 import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { ReadingType } from "@/types";
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type HomeNavigation = CompositeNavigationProp<
+  NativeStackNavigationProp<HomeStackParamList, "Home">,
+  CompositeNavigationProp<
+    BottomTabNavigationProp<MainTabParamList>,
+    NativeStackNavigationProp<RootStackParamList>
+  >
+>;
 
 const READING_TYPES: ReadingType[] = [
   "glucose",
@@ -32,7 +42,7 @@ export default function HomeScreen() {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme } = useTheme();
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<HomeNavigation>();
   const { readings, getLatestByType, getLatestReading, refresh } =
     useReadingsContext();
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +58,18 @@ export default function HomeScreen() {
 
   const latestReading = getLatestReading();
   const primaryType = latestReading?.type || "glucose";
+
+  const openReading = (readingId: string) => {
+    navigation.navigate("HistoryTab", {
+      screen: "ReadingDetail",
+      params: { readingId },
+      initial: false,
+    });
+  };
+
+  const startReading = (initialType?: ReadingType) => {
+    navigation.navigate("AddReading", initialType ? { initialType } : {});
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -69,7 +91,12 @@ export default function HomeScreen() {
           />
         }
       >
-        <HeroCard reading={latestReading} />
+        <HeroCard
+          reading={latestReading}
+          onPress={() =>
+            latestReading ? openReading(latestReading.id) : startReading()
+          }
+        />
 
         <ThemedText style={styles.sectionTitle}>Quick Stats</ThemedText>
         <View style={styles.statsGrid}>
@@ -79,6 +106,11 @@ export default function HomeScreen() {
                 key={type}
                 type={type}
                 reading={getLatestByType(type)}
+                onPress={() => {
+                  const latest = getLatestByType(type);
+                  if (latest) openReading(latest.id);
+                  else startReading(type);
+                }}
               />
             ))}
           </View>
@@ -88,6 +120,11 @@ export default function HomeScreen() {
                 key={type}
                 type={type}
                 reading={getLatestByType(type)}
+                onPress={() => {
+                  const latest = getLatestByType(type);
+                  if (latest) openReading(latest.id);
+                  else startReading(type);
+                }}
               />
             ))}
           </View>
@@ -98,7 +135,7 @@ export default function HomeScreen() {
       </ScrollView>
 
       <FloatingActionButton
-        onPress={() => navigation.navigate("AddReading")}
+        onPress={() => startReading()}
         bottomOffset={tabBarHeight + Spacing.xl}
       />
     </View>

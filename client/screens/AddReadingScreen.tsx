@@ -1,18 +1,22 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   View,
   StyleSheet,
   TextInput,
   Pressable,
-  Alert,
   Switch,
-  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
+import type { RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -27,12 +31,15 @@ import {
 import { startOfLocalDay } from "@/lib/readingOrder";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import { usePreferencesContext } from "@/context/PreferencesContext";
-import { displayUnitFor } from "@/lib/units";
+import { displayUnitFor, formatMeasurement } from "@/lib/units";
 import { formatUsualRange } from "@/lib/referenceRanges";
 import { validateReadingInput } from "@/lib/readingValue";
+import { PhotoPickError, pickPhoto } from "@/lib/pickPhoto";
 import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
+import type { RootStackParamList } from "@/navigation/RootStackNavigator";
 import type { ReadingType, ReadingTag } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
@@ -47,9 +54,19 @@ export default function AddReadingScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
-  const navigation = useNavigation();
-  const { addReading } = useReadingsContext();
+  const navigation =
+    useNavigation<
+      NativeStackNavigationProp<RootStackParamList, "AddReading">
+    >();
+  const route = useRoute<RouteProp<RootStackParamList, "AddReading">>();
+  const { notify } = useFeedback();
+  const { readings, addReading, updateReading } = useReadingsContext();
   const { preferences } = usePreferencesContext();
+  const readingId = route.params?.readingId;
+  const unitsRef = useRef(preferences.units);
+  unitsRef.current = preferences.units;
+  const readingsRef = useRef(readings);
+  readingsRef.current = readings;
 
   const [selectedType, setSelectedType] = useState<ReadingType>("glucose");
   const [value, setValue] = useState("");
@@ -59,6 +76,54 @@ export default function AddReadingScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [timestamp, setTimestamp] = useState(() => Date.now());
   const [isSaving, setIsSaving] = useState(false);
+  const [draftReady, setDraftReady] = useState(!readingId);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!readingId) {
+        setSelectedType(route.params?.initialType ?? "glucose");
+        setValue("");
+        setNotes("");
+        setIsFasting(false);
+        setSelectedTags([]);
+        setPhotoUri(null);
+        setTimestamp(Date.now());
+        setDraftReady(true);
+        return;
+      }
+
+      const existing = readingsRef.current.find(
+        (item) => item.id === readingId,
+      );
+      if (!existing) {
+        notify({
+          tone: "error",
+          message: "That reading is no longer on this device.",
+        });
+        navigation.goBack();
+        return;
+      }
+
+      setSelectedType(existing.type);
+      setValue(
+        formatMeasurement(existing.type, existing.value, unitsRef.current, {
+          keepDecimals: true,
+        }),
+      );
+      setNotes(existing.notes ?? "");
+      setIsFasting(Boolean(existing.isFasting));
+      setSelectedTags(existing.tags ?? []);
+      setPhotoUri(existing.photoUri ?? null);
+      setTimestamp(existing.timestamp);
+      setDraftReady(true);
+    }, [navigation, notify, readingId, route.params?.initialType]),
+  );
+
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: readingId ? "Edit Reading" : "Add Reading",
+    });
+  }, [navigation, readingId]);
 
   const applyDate = (picked: Date) => {
     setTimestamp((current) => {
@@ -99,64 +164,20 @@ export default function AddReadingScreen() {
     );
   };
 
-  const handlePickImage = async () => {
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Not Available",
-        "Photo attachments require Expo Go. Run this app on your device to use this feature.",
-      );
-      return;
-    }
-
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow access to your photo library to attach images.",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-      Haptics.selectionAsync();
-    }
-  };
-
-  const handleTakePhoto = async () => {
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Not Available",
-        "Camera requires Expo Go. Run this app on your device to use this feature.",
-      );
-      return;
-    }
-
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission Required",
-        "Please allow camera access to take photos.",
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-      Haptics.selectionAsync();
+  const attachPhoto = async (source: "library" | "camera") => {
+    try {
+      const uri = await pickPhoto(source);
+      if (!uri) return;
+      setPhotoUri(uri);
+      void Haptics.selectionAsync();
+    } catch (error) {
+      notify({
+        tone: "error",
+        message:
+          error instanceof PhotoPickError
+            ? error.message
+            : "Could not attach that photo.",
+      });
     }
   };
 
@@ -165,22 +186,51 @@ export default function AddReadingScreen() {
 
     setIsSaving(true);
     try {
-      await addReading(selectedType, validation.canonicalValue, {
+      const options = {
         notes: notes.trim() || undefined,
         isFasting,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photoUri: photoUri || undefined,
         referenceSex: preferences.referenceSex,
         timestamp,
-      });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      };
+      if (readingId) {
+        await updateReading(
+          readingId,
+          selectedType,
+          validation.canonicalValue,
+          options,
+        );
+        notify({ tone: "success", message: "Reading updated." });
+      } else {
+        await addReading(selectedType, validation.canonicalValue, options);
+      }
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch {
-      Alert.alert("Error", "Failed to save reading. Please try again.");
+      notify({
+        tone: "error",
+        message: "Could not save this reading. Please try again.",
+      });
     } finally {
       setIsSaving(false);
     }
   };
+
+  if (!draftReady) {
+    return (
+      <View
+        style={[
+          styles.container,
+          styles.loading,
+          { backgroundColor: theme.backgroundRoot },
+        ]}
+        accessibilityLabel="Loading reading"
+      >
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAwareScrollViewCompat
@@ -401,7 +451,7 @@ export default function AddReadingScreen() {
       ) : (
         <View style={styles.photoButtons}>
           <Pressable
-            onPress={handlePickImage}
+            onPress={() => attachPhoto("library")}
             accessibilityRole="button"
             accessibilityLabel="Choose a photo from the library"
             accessibilityHint="Attaches a picture that stays on this device"
@@ -419,7 +469,7 @@ export default function AddReadingScreen() {
             </ThemedText>
           </Pressable>
           <Pressable
-            onPress={handleTakePhoto}
+            onPress={() => attachPhoto("camera")}
             accessibilityRole="button"
             accessibilityLabel="Take a photo"
             accessibilityHint="Uses the camera. The picture stays on this device"
@@ -459,7 +509,7 @@ export default function AddReadingScreen() {
 
       <View style={styles.buttonContainer}>
         <Button onPress={handleSave} disabled={isSaving || !validation.ok}>
-          {isSaving ? "Saving..." : "Save Reading"}
+          {isSaving ? "Saving..." : readingId ? "Save Changes" : "Save Reading"}
         </Button>
       </View>
     </KeyboardAwareScrollViewCompat>
@@ -469,6 +519,10 @@ export default function AddReadingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  loading: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   label: {
     fontSize: 14,

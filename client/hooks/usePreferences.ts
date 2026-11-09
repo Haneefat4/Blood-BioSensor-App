@@ -32,14 +32,27 @@ export function usePreferences() {
     loadPreferences();
   }, [loadPreferences]);
 
-  const updatePreferences = useCallback((updates: Partial<UserPreferences>) => {
-    return enqueueRef.current(async () => {
-      const next = { ...preferencesRef.current, ...updates };
-      preferencesRef.current = next;
-      setPreferences(next);
-      await saveUserPreferences(next);
-    });
-  }, []);
+  const updatePreferences = useCallback(
+    (
+      updates:
+        | Partial<UserPreferences>
+        | ((current: UserPreferences) => Partial<UserPreferences> | null),
+    ) => {
+      return enqueueRef.current(async () => {
+        const partial =
+          typeof updates === "function"
+            ? updates(preferencesRef.current)
+            : updates;
+        if (partial == null) return preferencesRef.current;
+        const next = { ...preferencesRef.current, ...partial };
+        preferencesRef.current = next;
+        setPreferences(next);
+        await saveUserPreferences(next);
+        return next;
+      });
+    },
+    [],
+  );
 
   const refresh = useCallback(() => loadPreferences(), [loadPreferences]);
 

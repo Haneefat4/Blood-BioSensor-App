@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "check:types": "tsc --noEmit",
-    "test": "tsx --test client/lib/referenceRanges.test.ts client/lib/readingValue.test.ts client/lib/readingOrder.test.ts client/lib/exportFormat.test.ts client/lib/storageParse.test.ts client/lib/serialQueue.test.ts",
+    "test": "tsx --test client/lib/referenceRanges.test.ts client/lib/readingValue.test.ts client/lib/readingOrder.test.ts client/lib/exportFormat.test.ts client/lib/storageParse.test.ts client/lib/serialQueue.test.ts client/lib/calendarHeatmap.test.ts client/lib/notificationPrefs.test.ts client/lib/reportPrint.test.ts",
     "check:format": "prettier --check \"**/*.{js,ts,tsx,css,json}\"",
     "format": "prettier --write \"**/*.{js,ts,tsx,css,json}\""
   },

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   Pressable,
-  Alert,
   Platform,
   Switch,
 } from "react-native";
@@ -25,7 +24,10 @@ import {
 } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
+import { useFeedback } from "@/components/FeedbackProvider";
 import { usePreferencesContext } from "@/context/PreferencesContext";
+import { useNotificationToggle } from "@/hooks/useNotificationToggle";
+import { withLinkedNotifications } from "@/lib/notificationPrefs";
 import { normalizeTime, sortTimes } from "@/lib/reminderTimes";
 import { syncScheduledReminders } from "@/lib/reminders";
 import type { ReadingType } from "@/types";
@@ -44,15 +46,19 @@ export default function RemindersScreen() {
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
   const { preferences, isLoading, updatePreferences } = usePreferencesContext();
+  const { notify } = useFeedback();
+  const { enabled: remindersOn, setEnabled: setRemindersOn } =
+    useNotificationToggle();
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [enabled, setEnabled] = useState(false);
   const [times, setTimes] = useState<string[]>(["09:00", "21:00"]);
   const [selectedTypes, setSelectedTypes] = useState<ReadingType[]>([
     "glucose",
   ]);
   const [newTime, setNewTime] = useState("");
   const [draftReady, setDraftReady] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const hydrated = useRef(false);
 
   useEffect(() => {
@@ -63,7 +69,6 @@ export default function RemindersScreen() {
     if (isLoading || hydrated.current) return;
     hydrated.current = true;
     const settings = preferences.reminderSettings;
-    setEnabled(settings?.enabled ?? false);
     setTimes(
       sortTimes(settings?.times?.length ? settings.times : ["09:00", "21:00"]),
     );
@@ -82,17 +87,29 @@ export default function RemindersScreen() {
 
   const requestPermission = async () => {
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Not Available",
-        "Push notifications require Expo Go. Run this app on your device to use this feature.",
-      );
+      const message =
+        "This browser cannot send reminder alerts. Allow notifications in the iOS or Android app. Reminder times saved here still apply on that app.";
+      setStatusText(message);
+      notify(message);
       return;
     }
     const { status } = await Notifications.requestPermissionsAsync();
-    setHasPermission(status === "granted");
-    if (status === "granted") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const granted = status === "granted";
+    setHasPermission(granted);
+    if (granted) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const message = "Notifications are allowed.";
+      setStatusText(message);
+      notify({ tone: "success", message });
+      if (preferences.notificationsEnabled) {
+        await syncScheduledReminders(preferences);
+      }
+      return;
     }
+    const message =
+      "Notifications were not allowed. You can turn them on in the system settings.";
+    setStatusText(message);
+    notify({ tone: "error", message });
   };
 
   const toggleType = (type: ReadingType) => {
@@ -109,14 +126,15 @@ export default function RemindersScreen() {
   const addTime = () => {
     const normalized = normalizeTime(newTime);
     if (!normalized) {
-      Alert.alert(
-        "Invalid Time",
-        "Please enter time in HH:MM format (e.g., 09:00 or 21:30).",
-      );
+      const message = "Enter a time as HH:MM, for example 09:00 or 21:30.";
+      setStatusText(message);
+      notify({ tone: "error", message });
       return;
     }
     if (times.includes(normalized)) {
-      Alert.alert("Duplicate", "This time is already added.");
+      const message = "That time is already in the list.";
+      setStatusText(message);
+      notify(message);
       return;
     }
     setTimes((prev) => sortTimes([...prev, normalized]));
@@ -130,33 +148,44 @@ export default function RemindersScreen() {
   };
 
   const handleSave = async () => {
-    if (enabled && !hasPermission) {
-      Alert.alert("Permission Required", "Please enable notifications first.");
-      return;
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const normalizedTimes = sortTimes(times);
+      const next = await updatePreferences((current) => {
+        const linked = withLinkedNotifications(
+          {
+            ...current,
+            reminderSettings: {
+              enabled: current.notificationsEnabled,
+              times: normalizedTimes,
+              types: selectedTypes,
+            },
+          },
+          current.notificationsEnabled,
+        );
+        return {
+          notificationsEnabled: linked.notificationsEnabled,
+          reminderSettings: linked.reminderSettings,
+        };
+      });
+      await syncScheduledReminders(next);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const message =
+        next.notificationsEnabled && Platform.OS === "web"
+          ? "Reminder times saved. Alerts are sent by the iOS or Android app, not this browser."
+          : next.notificationsEnabled && hasPermission === false
+            ? "Reminder times saved. Allow notifications on this phone before alerts can be scheduled."
+            : "Reminder times saved.";
+      setStatusText(message);
+      notify({ tone: "success", message });
+    } catch {
+      const message = "Could not save reminders. Please try again.";
+      setStatusText(message);
+      notify({ tone: "error", message });
+    } finally {
+      setIsSaving(false);
     }
-
-    const normalizedTimes = sortTimes(times);
-    const turningRemindersOn =
-      enabled && !preferences.reminderSettings?.enabled;
-    const next = {
-      ...preferences,
-      notificationsEnabled: turningRemindersOn
-        ? true
-        : preferences.notificationsEnabled,
-      reminderSettings: {
-        enabled,
-        times: normalizedTimes,
-        types: selectedTypes,
-      },
-    };
-    await updatePreferences({
-      notificationsEnabled: next.notificationsEnabled,
-      reminderSettings: next.reminderSettings,
-    });
-    await syncScheduledReminders(next);
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert("Saved", "Your reminder settings have been saved.");
   };
 
   if (!draftReady) {
@@ -189,7 +218,8 @@ export default function RemindersScreen() {
         >
           <Feather name="alert-circle" size={20} color={colors.warning} />
           <ThemedText style={[styles.webNoticeText, { color: colors.warning }]}>
-            Push notifications require Expo Go on your mobile device.
+            Push notifications are delivered by the iOS or Android app. Reminder
+            times you save here are kept on this device.
           </ThemedText>
         </View>
       ) : null}
@@ -200,14 +230,18 @@ export default function RemindersScreen() {
         <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle}>Enable Reminders</ThemedText>
           <Switch
-            value={enabled}
+            value={remindersOn}
             accessibilityLabel="Enable reminders"
-            onValueChange={(val) => {
-              Haptics.selectionAsync();
-              setEnabled(val);
+            onValueChange={(value) => {
+              void setRemindersOn(value);
             }}
-            trackColor={{ false: theme.border, true: colors.primary + "80" }}
-            thumbColor={enabled ? colors.primary : theme.backgroundSecondary}
+            trackColor={{
+              false: theme.border,
+              true: colors.primary + "80",
+            }}
+            thumbColor={
+              remindersOn ? colors.primary : theme.backgroundSecondary
+            }
           />
         </View>
 
@@ -221,7 +255,7 @@ export default function RemindersScreen() {
           </ThemedText>
         ) : null}
 
-        {!hasPermission && enabled ? (
+        {!hasPermission && remindersOn ? (
           <Pressable
             onPress={requestPermission}
             accessibilityRole="button"
@@ -241,7 +275,7 @@ export default function RemindersScreen() {
           styles.section,
           {
             backgroundColor: theme.backgroundDefault,
-            opacity: enabled ? 1 : 0.5,
+            opacity: remindersOn ? 1 : 0.5,
           },
         ]}
       >
@@ -302,7 +336,7 @@ export default function RemindersScreen() {
           styles.section,
           {
             backgroundColor: theme.backgroundDefault,
-            opacity: enabled ? 1 : 0.5,
+            opacity: remindersOn ? 1 : 0.5,
           },
         ]}
       >
@@ -316,9 +350,12 @@ export default function RemindersScreen() {
               <Pressable
                 key={type}
                 onPress={() => toggleType(type)}
-                disabled={!enabled}
+                disabled={!remindersOn}
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: isSelected, disabled: !enabled }}
+                accessibilityState={{
+                  checked: isSelected,
+                  disabled: !remindersOn,
+                }}
                 accessibilityLabel={READING_CONFIG[type].label}
                 style={[
                   styles.typeChip,
@@ -349,7 +386,17 @@ export default function RemindersScreen() {
       </View>
 
       <View style={styles.saveContainer}>
-        <Button onPress={handleSave}>Save Reminders</Button>
+        {statusText ? (
+          <ThemedText
+            accessibilityLiveRegion="polite"
+            style={[styles.statusText, { color: theme.text }]}
+          >
+            {statusText}
+          </ThemedText>
+        ) : null}
+        <Button onPress={handleSave} disabled={isSaving}>
+          {isSaving ? "Saving..." : "Save Reminders"}
+        </Button>
       </View>
     </KeyboardAwareScrollViewCompat>
   );
@@ -466,5 +513,10 @@ const styles = StyleSheet.create({
   },
   saveContainer: {
     marginTop: Spacing.lg,
+  },
+  statusText: {
+    fontSize: 15,
+    lineHeight: 21,
+    marginBottom: Spacing.md,
   },
 });
