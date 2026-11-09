@@ -30,10 +30,18 @@ import { useReadingsContext } from "@/context/ReadingsContext";
 import { useMedicationsContext } from "@/context/MedicationsContext";
 import { clearAllData } from "@/lib/storage";
 import { displayUnitFor, formatMeasurement } from "@/lib/units";
+import { REFERENCE_RANGE_NOTE } from "@/lib/referenceRanges";
+import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { syncScheduledReminders } from "@/lib/reminders";
 import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
 import { READING_CONFIG, READING_TAGS } from "@/types";
-import type { UserPreferences } from "@/types";
+import type { ReferenceSex, UserPreferences } from "@/types";
+
+const SEX_OPTIONS: { value: ReferenceSex; label: string }[] = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+  { value: "unspecified", label: "Not specified" },
+];
 
 const APPEARANCE_OPTIONS: {
   value: UserPreferences["darkMode"];
@@ -54,6 +62,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<ProfileNav>();
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
+  const { assess } = useReadingDisplay();
   const {
     preferences,
     updatePreferences,
@@ -109,7 +118,7 @@ export default function ProfileScreen() {
           READING_CONFIG[r.type].label,
           formatMeasurement(r.type, r.value, preferences.units),
           displayUnitFor(r.type, preferences.units),
-          r.status,
+          assess(r).label,
           r.isFasting ? "Yes" : "No",
           tags,
           r.notes || "",
@@ -166,6 +175,7 @@ export default function ProfileScreen() {
             .warning { color: #F59E0B; }
             .critical { color: #EF4444; }
             .fasting { background-color: #FEF3C7; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+            .note { color: #4B5563; font-size: 13px; }
           </style>
         </head>
         <body>
@@ -174,6 +184,7 @@ export default function ProfileScreen() {
             <p><strong>User:</strong> ${preferences.displayName}</p>
             <p><strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
             <p><strong>Total Readings:</strong> ${readings.length}</p>
+            <p class="note">${REFERENCE_RANGE_NOTE}</p>
           </div>
           <table>
             <tr>
@@ -185,18 +196,19 @@ export default function ProfileScreen() {
               <th>Notes</th>
             </tr>
             ${readings
-              .map(
-                (r) => `
+              .map((r) => {
+                const assessment = assess(r);
+                return `
               <tr>
                 <td>${new Date(r.timestamp).toLocaleDateString()} ${new Date(r.timestamp).toLocaleTimeString()}</td>
                 <td>${READING_CONFIG[r.type].label}</td>
                 <td>${formatMeasurement(r.type, r.value, preferences.units)} ${displayUnitFor(r.type, preferences.units)}</td>
-                <td class="${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</td>
+                <td class="${assessment.severity}">${assessment.label}</td>
                 <td>${r.isFasting ? '<span class="fasting">Fasting</span>' : "-"}</td>
                 <td>${r.notes || "-"}</td>
               </tr>
-            `,
-              )
+            `;
+              })
               .join("")}
           </table>
         </body>
@@ -377,6 +389,44 @@ export default function ProfileScreen() {
           Applies to glucose and cholesterol. Hemoglobin and platelets keep
           their own units.
         </ThemedText>
+        <ThemedText style={styles.fieldLabel}>Hemoglobin range</ThemedText>
+        <View style={styles.appearanceRow}>
+          {SEX_OPTIONS.map((option) => {
+            const selected = preferences.referenceSex === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() =>
+                  updatePreferences({ referenceSex: option.value })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`${option.label} hemoglobin range`}
+                accessibilityState={{ selected }}
+                style={[
+                  styles.appearanceOption,
+                  {
+                    backgroundColor: selected
+                      ? colors.primary
+                      : theme.backgroundSecondary,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.appearanceLabel,
+                    { color: selected ? "#FFFFFF" : theme.text },
+                  ]}
+                >
+                  {option.label}
+                </ThemedText>
+              </Pressable>
+            );
+          })}
+        </View>
+        <ThemedText style={[styles.choiceHint, { color: theme.textSecondary }]}>
+          Female and male use typical adult ranges. Not specified uses a
+          combined range. This does not change other reading types.
+        </ThemedText>
         <View style={[styles.divider, { backgroundColor: theme.border }]} />
         <SettingsRow
           icon="bell"
@@ -493,6 +543,18 @@ const styles = StyleSheet.create({
     marginTop: -Spacing.xs,
     marginBottom: Spacing.sm,
   },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: "500",
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  choiceHint: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
   appearanceRow: {
     flexDirection: "row",
     gap: Spacing.sm,
@@ -504,11 +566,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 4,
     paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.md,
   },
   appearanceLabel: {
     fontSize: 13,
     fontWeight: "600",
+    textAlign: "center",
   },
   dangerSection: {
     marginTop: Spacing.xl,

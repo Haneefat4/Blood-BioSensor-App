@@ -12,6 +12,7 @@ import { useReadingDisplay } from "@/hooks/useReadingDisplay";
 import { Spacing, BorderRadius, Colors } from "@/constants/theme";
 import { ThemedText } from "@/components/ThemedText";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import type { HistoryStackParamList } from "@/navigation/HistoryStackNavigator";
 import { READING_CONFIG, READING_TAGS } from "@/types";
@@ -24,7 +25,7 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
   const headerHeight = useHeaderHeight();
   const tabBarHeight = useBottomTabBarHeight();
   const { theme, isDark } = useTheme();
-  const { valueText, unitText } = useReadingDisplay();
+  const { valueText, unitText, assess, rangeText } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
   const { readings } = useReadingsContext();
   const reading = readings.find((item) => item.id === readingId);
@@ -39,6 +40,7 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
   if (!reading) return null;
 
   const config = READING_CONFIG[reading.type];
+  const assessment = assess(reading);
   const timestamp = new Date(reading.timestamp).toLocaleString(undefined, {
     month: "short",
     day: "numeric",
@@ -75,7 +77,7 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
             </View>
             <ThemedText style={styles.title}>{config.label}</ThemedText>
           </View>
-          <StatusBadge status={reading.status} />
+          <StatusBadge status={assessment.severity} label={assessment.label} />
         </View>
         <View style={styles.valueRow}>
           <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
@@ -113,6 +115,14 @@ export default function ReadingDetailScreen({ route, navigation }: Props) {
         {reading.notes ? (
           <ThemedText style={styles.notes}>{reading.notes}</ThemedText>
         ) : null}
+        <View style={styles.rangeBlock}>
+          <ThemedText
+            style={[styles.rangeText, { color: theme.textSecondary }]}
+          >
+            {rangeText(reading.type, { isFasting: reading.isFasting })}
+          </ThemedText>
+          <ReferenceRangeNote />
+        </View>
       </View>
 
       {reading.photoUri ? (
@@ -241,6 +251,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     fontSize: 16,
     lineHeight: 22,
+  },
+  rangeBlock: {
+    marginTop: Spacing.lg,
+  },
+  rangeText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   photo: {
     width: "100%",

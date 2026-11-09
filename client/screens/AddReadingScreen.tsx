@@ -22,11 +22,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { Button } from "@/components/Button";
 import { useReadingsContext } from "@/context/ReadingsContext";
 import { usePreferencesContext } from "@/context/PreferencesContext";
-import {
-  displayUnitFor,
-  formatNormalRange,
-  toCanonicalValue,
-} from "@/lib/units";
+import { displayUnitFor } from "@/lib/units";
+import { formatUsualRange } from "@/lib/referenceRanges";
+import { validateReadingInput } from "@/lib/readingValue";
+import { ReferenceRangeNote } from "@/components/ReferenceRangeNote";
 import type { ReadingType, ReadingTag } from "@/types";
 import { READING_CONFIG, READING_TAGS } from "@/types";
 
@@ -54,6 +53,16 @@ export default function AddReadingScreen() {
   const [isSaving, setIsSaving] = useState(false);
 
   const unitLabel = displayUnitFor(selectedType, preferences.units);
+  const validation = validateReadingInput(
+    value,
+    selectedType,
+    preferences.units,
+  );
+  const showValueError = value.trim().length > 0 && !validation.ok;
+  const rangeLine = formatUsualRange(selectedType, preferences.units, {
+    isFasting,
+    sex: preferences.referenceSex,
+  });
 
   const toggleTag = (tag: ReadingTag) => {
     Haptics.selectionAsync();
@@ -124,24 +133,16 @@ export default function AddReadingScreen() {
   };
 
   const handleSave = async () => {
-    const numValue = parseFloat(value);
-    if (isNaN(numValue) || numValue <= 0) {
-      Alert.alert("Invalid Value", "Please enter a valid positive number.");
-      return;
-    }
+    if (!validation.ok) return;
 
     setIsSaving(true);
     try {
-      const canonicalValue = toCanonicalValue(
-        selectedType,
-        numValue,
-        preferences.units,
-      );
-      await addReading(selectedType, canonicalValue, {
+      await addReading(selectedType, validation.canonicalValue, {
         notes: notes.trim() || undefined,
         isFasting,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
         photoUri: photoUri || undefined,
+        referenceSex: preferences.referenceSex,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
@@ -205,6 +206,10 @@ export default function AddReadingScreen() {
           value={value}
           onChangeText={setValue}
           keyboardType="decimal-pad"
+          inputMode="decimal"
+          autoCorrect={false}
+          autoCapitalize="none"
+          accessibilityLabel="Reading value"
           placeholder="0"
           placeholderTextColor={theme.textSecondary}
           style={[
@@ -212,6 +217,7 @@ export default function AddReadingScreen() {
             {
               backgroundColor: theme.backgroundDefault,
               color: theme.text,
+              borderColor: showValueError ? colors.error : "transparent",
             },
           ]}
         />
@@ -224,11 +230,25 @@ export default function AddReadingScreen() {
         </View>
       </View>
 
+      {showValueError && !validation.ok ? (
+        <ThemedText
+          accessibilityLiveRegion="polite"
+          style={[styles.errorText, { color: colors.error }]}
+        >
+          {validation.message}
+        </ThemedText>
+      ) : null}
+
       <View style={styles.rangeInfo}>
         <Feather name="info" size={14} color={theme.textSecondary} />
-        <ThemedText style={[styles.rangeText, { color: theme.textSecondary }]}>
-          Normal range: {formatNormalRange(selectedType, preferences.units)}
-        </ThemedText>
+        <View style={styles.rangeCopy}>
+          <ThemedText
+            style={[styles.rangeText, { color: theme.textSecondary }]}
+          >
+            {rangeLine}
+          </ThemedText>
+          <ReferenceRangeNote />
+        </View>
       </View>
 
       <View
@@ -356,7 +376,7 @@ export default function AddReadingScreen() {
       />
 
       <View style={styles.buttonContainer}>
-        <Button onPress={handleSave} disabled={isSaving || !value}>
+        <Button onPress={handleSave} disabled={isSaving || !validation.ok}>
           {isSaving ? "Saving..." : "Save Reading"}
         </Button>
       </View>
@@ -405,9 +425,15 @@ const styles = StyleSheet.create({
     height: 64,
     paddingHorizontal: Spacing.xl,
     borderRadius: BorderRadius.lg,
+    borderWidth: 1,
     fontSize: 32,
     fontWeight: "700",
     textAlign: "center",
+  },
+  errorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: Spacing.sm,
   },
   unitBadge: {
     paddingHorizontal: Spacing.lg,
@@ -420,12 +446,16 @@ const styles = StyleSheet.create({
   },
   rangeInfo: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: Spacing.xs,
     marginBottom: Spacing.xl,
   },
+  rangeCopy: {
+    flex: 1,
+  },
   rangeText: {
     fontSize: 13,
+    lineHeight: 18,
   },
   fastingRow: {
     flexDirection: "row",

@@ -16,7 +16,7 @@ interface HeroCardProps {
 
 export function HeroCard({ reading }: HeroCardProps) {
   const { isDark } = useTheme();
-  const { valueText, unitText } = useReadingDisplay();
+  const { valueText, unitText, assess } = useReadingDisplay();
   const colors = isDark ? Colors.dark : Colors.light;
 
   if (!reading) {
@@ -34,6 +34,7 @@ export function HeroCard({ reading }: HeroCardProps) {
   }
 
   const config = READING_CONFIG[reading.type];
+  const assessment = assess(reading);
   const timeAgo = getTimeAgo(reading.timestamp);
 
   return (
@@ -45,7 +46,7 @@ export function HeroCard({ reading }: HeroCardProps) {
           </View>
           <ThemedText style={styles.typeLabel}>{config.label}</ThemedText>
         </View>
-        <StatusBadge status={reading.status} />
+        <StatusBadge status={assessment.severity} label={assessment.label} />
       </View>
       <View style={styles.valueSection}>
         <ThemedText style={styles.value}>{valueText(reading)}</ThemedText>
